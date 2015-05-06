@@ -6,6 +6,7 @@
 ME=`basename $0 .sh`
 DIR="`dirname $0`"
 cd "$DIR/.."
+export MAVEN_OPTS='-Xmx512m -XX:MaxPermSize=128m'
 
 SBT=bin/sbt
 LOGFILE="$DIR/$ME.log"

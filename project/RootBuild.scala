@@ -62,11 +62,14 @@ object RootBuild extends Build {
   val examplesJarName = examplesProjectName + "-" + sparkVersion + ".jar"
   val examplesTestJarName = examplesProjectName + "-" + sparkVersion + "-tests.jar"
 
+  val flinkProjectName = "ddf_flink"
+  val flinkVersion = "0.9.0-milestone-1"
   
-  lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, examples)
+  lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, flink,examples)
   lazy val core = Project("core", file("core"), settings = coreSettings)
   lazy val spark = Project("spark", file("spark"), settings = sparkSettings) dependsOn (core)
   lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (spark) dependsOn (core)
+  lazy val flink = Project("flink", file("flink"), settings = flinkSettings) dependsOn (core)
 
   // A configuration to set an alternative publishLocalConfiguration
   lazy val MavenCompile = config("m2r") extend(Compile)
@@ -140,6 +143,14 @@ object RootBuild extends Build {
     //"edu.berkeley.cs.amplab" % "shark_2.9.3" % SHARK_VERSION excludeAll(excludeSpark)
     //"edu.berkeley.cs.shark" %% "shark" % SHARK_VERSION exclude("org.apache.avro", "avro-ipc") exclude("com.google.protobuf", "protobuf-java") exclude("io.netty", "netty-all"),
     "com.google.protobuf" % "protobuf-java" % "2.5.0"
+  )
+
+  val flink_dependencies = Seq(
+    "org.apache.flink" % "flink-core" % flinkVersion,
+    "org.apache.flink" % "flink-java" % flinkVersion,
+    "org.apache.flink" % "flink-scala" % flinkVersion,
+    "org.apache.flink" % "flink-clients" % flinkVersion,
+	"org.apache.flink" % "flink-ml" % flinkVersion
   )
 
 
@@ -269,6 +280,7 @@ object RootBuild extends Build {
     dependencyOverrides += "com.sun.jersey" % "jersey-json" % "1.9",
     dependencyOverrides += "com.sun.jersey" % "jersey-server" % "1.9",
     dependencyOverrides += "org.scalamacros" % "quasiquotes_2.10" % "2.0.0",
+    dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
     pomExtra := (
       <!--
       **************************************************************************************************
@@ -549,7 +561,11 @@ object RootBuild extends Build {
   ) ++ assemblySettings ++ extraAssemblySettings
 
 
-
+  def flinkSettings = commonSettings++ Seq(
+    name := flinkProjectName,
+    compile in Compile <<= compile in Compile andFinally { List("sh", "-c", "touch flink/" + targetDir + "/*timestamp") },
+    libraryDependencies ++=flink_dependencies
+  ) ++ assemblySettings ++ extraAssemblySettings
 
 
   def examplesSettings = commonSettings ++ Seq(

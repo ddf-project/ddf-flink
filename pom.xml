@@ -60,6 +60,7 @@
 	<modules>
 	  <module>core</module>
 	  <module>spark</module>
+	  <module>flink</module>
 	  <module>examples</module>
 	</modules>
 
