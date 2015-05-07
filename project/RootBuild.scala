@@ -63,7 +63,7 @@ object RootBuild extends Build {
   val examplesTestJarName = examplesProjectName + "-" + sparkVersion + "-tests.jar"
 
   val flinkProjectName = "ddf_flink"
-  val flinkVersion = "0.9.0-milestone-1"
+  val flinkVersion = "0.8.1"
   
   lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, flink,examples)
   lazy val core = Project("core", file("core"), settings = coreSettings)
@@ -149,8 +149,7 @@ object RootBuild extends Build {
     "org.apache.flink" % "flink-core" % flinkVersion,
     "org.apache.flink" % "flink-java" % flinkVersion,
     "org.apache.flink" % "flink-scala" % flinkVersion,
-    "org.apache.flink" % "flink-clients" % flinkVersion,
-	"org.apache.flink" % "flink-ml" % flinkVersion
+    "org.apache.flink" % "flink-clients" % flinkVersion
   )
 
 
@@ -281,6 +280,7 @@ object RootBuild extends Build {
     dependencyOverrides += "com.sun.jersey" % "jersey-server" % "1.9",
     dependencyOverrides += "org.scalamacros" % "quasiquotes_2.10" % "2.0.0",
     dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
+	dependencyOverrides += "joda-time" % "joda-time" % "2.7",
     pomExtra := (
       <!--
       **************************************************************************************************
