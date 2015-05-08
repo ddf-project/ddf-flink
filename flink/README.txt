@@ -12,6 +12,10 @@ New devs
 6. For SBT, run SBT from DDF(base dir) folder. Then choose the flink project by doing 'project flink'. You can do most things using SBT except for packaging/distribution and making classes available to the shell.
 7. There is a style folder in the base DDF directory. Import the code formatter and check style into your respective IDEs. This is important. Please do not check in without applying the code formatter.
 
+MRQL
+----
+Language syntax is at http://wiki.apache.org/mrql/LanguageDescription
+
 
 
 
