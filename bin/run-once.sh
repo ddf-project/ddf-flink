@@ -48,6 +48,7 @@ function Run() {
   #rm -fr ~/.m2/repository/{adatao,org/spark-project,edu/berkeley}
   #rm -fr ~/.ivy2/{cache,local}/{adatao.*,org.spark-project,edu.berkeley.*}
   spark/lib/mvn-install-jars.sh || Error "mvn-install-jars.sh failed"
+  flink/lib/mvn-install-jars.sh || Error "mvn-install-jars.sh failed"
 
 
   echo "

@@ -107,6 +107,12 @@ object RootBuild extends Build {
     "com.adatao.unmanaged.net.rforge" % "Rserve" % "1.7.2.compiled"
   )
 
+  val com_adatao_unmanaged_flink = Seq(
+    "com.adatao.unmanaged.org.apache.mrql" % "mrql-core" % "0.9.6-incubating-SNAPSHOT",
+    "com.adatao.unmanaged.org.apache.mrql" % "mrql-gen" % "0.9.6-incubating-SNAPSHOT",
+    "com.adatao.unmanaged.org.apache.mrql" % "mrql-flink" % "0.9.6-incubating-SNAPSHOT"
+  )
+
   val scalaArtifacts = Seq("jline", "scala-compiler", "scala-library", "scala-reflect")
   val scalaDependencies = scalaArtifacts.map( artifactId => "org.scala-lang" % artifactId % theScalaVersion)
 
@@ -564,6 +570,7 @@ object RootBuild extends Build {
   def flinkSettings = commonSettings++ Seq(
     name := flinkProjectName,
     compile in Compile <<= compile in Compile andFinally { List("sh", "-c", "touch flink/" + targetDir + "/*timestamp") },
+    libraryDependencies ++= com_adatao_unmanaged_flink,
     libraryDependencies ++=flink_dependencies
   ) ++ assemblySettings ++ extraAssemblySettings
 
