@@ -82,6 +82,7 @@ public class SqlHandler extends ASqlHandler {
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
         DDF ddf = new FlinkDDF(manager, data, new Class[]{MRData.class}, null, tableName, schema);
         addStringRepresentation(tableName, ddf);
+        addTupleRepresentation(tableName, ddf);
         return ddf;
     }
 
@@ -97,18 +98,11 @@ public class SqlHandler extends ASqlHandler {
         return new Tuple2<>(data, columns);
     }
 
-    /**
-     * TODO How do we get the Flink Dataset representation.
-     * This should be a tuple. We have the DDF schema with us as a result of getting the query type
-     * Now we need to make it into a DataSet<Tuple>.
-     * We will need a dynamic TupleBuilder Function which can then be used to map each line of the file to a tuple
-     *
-     * @param tableName
-     * @param ddf
-     * @throws DDFException
-     */
     private void addTupleRepresentation(String tableName, DDF ddf) throws DDFException {
-
+        //TODO How do we get the Flink Dataset representation.
+        //This should be a tuple. We have the DDF schema with us as a result of getting the query type
+        //Now we need to make it into a DataSet<Tuple>.
+        //We will need a dynamic TupleBuilder Function which can then be used to map each line of the file to a tuple
     }
 
     private void addStringRepresentation(String tableName, DDF ddf) throws DDFException {
