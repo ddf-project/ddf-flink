@@ -26,11 +26,12 @@ import io.flink.ddf.Utils;
 import io.flink.ddf.content.PersistenceHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.mrql.Bag;
-import org.apache.mrql.MRData;
-import org.apache.mrql.MRQL;
-import org.apache.mrql.Tuple;
+import org.apache.mrql.*;
+import org.apache.mrql.gen.Node;
+import org.apache.mrql.gen.Tree;
+import org.apache.mrql.gen.VariableLeaf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,20 +74,41 @@ public class SqlHandler extends ASqlHandler {
     public DDF sql2ddf(String command, Schema schema, String dataSource, Schema.DataFormat dataFormat) throws DDFException {
         String tableName = schema != null ? schema.getTableName() : null;
         if (tableName == null) tableName = this.getDDF().getSchemaHandler().newTableName();
-        if (schema != null) schema.setTableName(tableName);
-        MRData data = getMrData(command, tableName);
+        if (schema == null) {
+            schema = new Schema(tableName, (String) null);
+        }
+        schema.setTableName(tableName);
+        Tuple2<MRData, List<Schema.Column>> result = getResult(command, tableName);
+        MRData data = result.f0;
+        schema.setColumns(result.f1);
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
         DDF ddf = new FlinkDDF(manager, data, new Class[]{MRData.class}, null, tableName, schema);
         //addStringRepresentation(tableName, ddf);
         return ddf;
     }
 
-    private MRData getMrData(String command, String tableName) {
+    private Tuple2<MRData, List<Schema.Column>> getResult(String command, String tableName) {
         if (!command.endsWith(";")) command += ";";
-        MRQL.evaluate(String.format("store %s := %s", tableName, command));
-        return MRQL.lookup_global_binding(tableName);
+        ///This whole deal with static methods is lousy really
+        //MRQL is not well designed. Our interpreter just extends from one of the existing ones.
+        MRQLInterpreter.evaluate(String.format("store %s := %s", tableName, command));
+        Tree queryType = MRQLInterpreter.topLevelQueryType();
+        List<Schema.Column> columns = new ArrayList<>();
+        addColumns(columns, queryType);
+        MRData data = MRQLInterpreter.lookup_global_binding(tableName);
+        return new Tuple2<>(data, columns);
     }
 
+    /**
+     * TODO How do we get the Flink Dataset representation.
+     * This should be a tuple. We have the DDF schema with us as a result of getting the query type
+     * Now we need to make it into a DataSet<Tuple>.
+     * We will need a dynamic TupleBuilder Function which can then be used to map each line of the file to a tuple
+     *
+     * @param tableName
+     * @param ddf
+     * @throws DDFException
+     */
     private void addStringRepresentation(String tableName, DDF ddf) throws DDFException {
         //will dump this as a CSV.
         PersistenceHandler persistenceHandler = (PersistenceHandler) ddf.getPersistenceHandler();
@@ -120,7 +142,9 @@ public class SqlHandler extends ASqlHandler {
     @Override
     public List<String> sql2txt(String command, Integer maxRows, String dataSource) throws DDFException {
         maxRows = maxRows == null ? Integer.MAX_VALUE : maxRows;
-        MRData data = getMrData(command, this.getDDF().getSchemaHandler().newTableName());
+        String tableName = this.getDDF().getSchemaHandler().newTableName();
+        Tuple2<MRData, List<Schema.Column>> result = getResult(command, tableName);
+        MRData data = result.f0;
         List<String> strings;
         if (data instanceof Bag) {
             Bag bag = (Bag) data;
@@ -141,6 +165,36 @@ public class SqlHandler extends ASqlHandler {
             strings.add(data.toString());
         }
         return strings;
+    }
+
+
+    public static void addColumns(List<Schema.Column> columns, Tree tree) {
+        if (tree.is_node()) {
+            Node node = (Node) tree;
+            if (node.name().equalsIgnoreCase("bind")) {
+                //these are the actual columns.
+                Tree colName = node.children.head;
+                Tree colType = node.children.tail.head;
+                columns.add(new Schema.Column(colName.stringValue(), colType.stringValue()));
+            } else {
+                addColumns(columns, node.children.head);
+                for (Tree kid : node.children.tail) {
+                    addColumns(columns, kid);
+                }
+            }
+        } else {
+            if (tree.is_double()) {
+                columns.add(new Schema.Column("VDouble", "double"));
+            } else if (tree.is_long()) {
+                columns.add(new Schema.Column("VLong", "long"));
+            } else if (tree.is_string()) {
+                columns.add(new Schema.Column("VString", "string"));
+            } else if (tree.is_variable()) {
+                VariableLeaf variableLeaf = (VariableLeaf) tree;
+                columns.add(new Schema.Column("V" + variableLeaf.value, variableLeaf.value));
+            }
+        }
+
     }
 
 }
