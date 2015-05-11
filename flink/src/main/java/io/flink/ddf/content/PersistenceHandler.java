@@ -14,30 +14,27 @@
  * limitations under the License.
  */
 
-package io.flink.ddf;
+package io.flink.ddf.content;
 
 import io.ddf.DDF;
-import io.ddf.DDFManager;
-import io.ddf.content.Schema;
 import io.ddf.exception.DDFException;
+import org.apache.hadoop.fs.Path;
 
 /**
  * User: satya
  */
-
-public class FlinkDDF extends DDF {
-
-
-    public FlinkDDF(DDFManager manager, Object data, Class<?>[] typeSpecs, String namespace, String name, Schema schema) throws DDFException {
-        super(manager, data, typeSpecs, namespace, name, schema);
+public class PersistenceHandler extends io.basic.ddf.content.PersistenceHandler {
+    public PersistenceHandler(DDF theDDF) {
+        super(theDDF);
     }
 
-    public FlinkDDF(DDFManager manager, DDFManager defaultManagerIfNull) throws DDFException {
-        super(manager, defaultManagerIfNull);
+    @Override
+    public String getDataFileName() throws DDFException {
+        return super.getDataFileName();
     }
 
-
-    public FlinkDDF(DDFManager manager) throws DDFException {
-        super(manager);
+    public String getDataFileNameAsURI() throws DDFException {
+        Path path = new Path(getDataFileName());
+        return path.toString();
     }
 }

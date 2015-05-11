@@ -23,10 +23,16 @@ import io.ddf.exception.DDFException;
 import io.flink.ddf.FlinkDDF;
 import io.flink.ddf.FlinkDDFManager;
 import io.flink.ddf.Utils;
+import io.flink.ddf.content.PersistenceHandler;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.mrql.Bag;
 import org.apache.mrql.MRData;
 import org.apache.mrql.MRQL;
+import org.apache.mrql.Tuple;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -65,25 +71,45 @@ public class SqlHandler extends ASqlHandler {
 
     @Override
     public DDF sql2ddf(String command, Schema schema, String dataSource, Schema.DataFormat dataFormat) throws DDFException {
-        String tableName = this.getDDF().getSchemaHandler().newTableName();
-        if (schema != null)
-            schema.setTableName(tableName);
-        MRQL.evaluate(String.format("store %s := %s;", tableName, command));
-        MRData data = MRQL.lookup_global_binding(tableName);
-        DDF ddf = new FlinkDDF(this.getManager(), data, null, null, schema.getTableName(), schema);
-        //will dump this as a CSV.
-        MRQL.evaluate(String.format("dump %s from %s;", tableName, tableName));
+        String tableName = schema != null ? schema.getTableName() : null;
+        if (tableName == null) tableName = this.getDDF().getSchemaHandler().newTableName();
+        if (schema != null) schema.setTableName(tableName);
+        MRData data = getMrData(command, tableName);
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
-        DataSet<String> textFile = manager.getExecutionEnvironment().readTextFile(tableName, ",");
-        //add a representation as a Flink DataSet
-        ddf.getRepresentationHandler().add(textFile, DataSet.class, String.class);
+        DDF ddf = new FlinkDDF(manager, data, new Class[]{MRData.class}, null, tableName, schema);
+        //addStringRepresentation(tableName, ddf);
         return ddf;
+    }
+
+    private MRData getMrData(String command, String tableName) {
+        if (!command.endsWith(";")) command += ";";
+        MRQL.evaluate(String.format("store %s := %s", tableName, command));
+        return MRQL.lookup_global_binding(tableName);
+    }
+
+    private void addStringRepresentation(String tableName, DDF ddf) throws DDFException {
+        //will dump this as a CSV.
+        PersistenceHandler persistenceHandler = (PersistenceHandler) ddf.getPersistenceHandler();
+        String dumpStr = String.format("dump '%s' from %s;", persistenceHandler.getDataFileName(), tableName);
+        MRQL.evaluate(dumpStr);
+        FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
+        String pathToRead = persistenceHandler.getDataFileNameAsURI();
+        DataSet<String> textFile = manager.getExecutionEnvironment().readTextFile(pathToRead);
+        try {
+            Tuple3<String[], List<Schema.Column>, String[]> metaInfo = Utils.getMetaInfo(manager.getExecutionEnvironment(), mLog, textFile, ",", false, true);
+            Schema schema = ddf.getSchema();
+            schema.setColumns(metaInfo.f1);
+            //add a representation as a Flink DataSet
+            ddf.getRepresentationHandler().add(textFile, DataSet.class, String.class);
+        } catch (Exception e) {
+            throw new DDFException(e);
+        }
     }
 
 
     @Override
     public List<String> sql2txt(String command) throws DDFException {
-        return sql2txt(command, Integer.MAX_VALUE);
+        return sql2txt(command, null);
     }
 
     @Override
@@ -93,13 +119,28 @@ public class SqlHandler extends ASqlHandler {
 
     @Override
     public List<String> sql2txt(String command, Integer maxRows, String dataSource) throws DDFException {
-        DDF ddf = sql2ddf(command, null, dataSource, null);
-        DataSet<String> textFile = (DataSet<String>) ddf.getRepresentationHandler().get(DataSet.class, String.class);
-        try {
-            FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
-            return Utils.collect(manager.getExecutionEnvironment(), textFile.first(maxRows));
-        } catch (Exception e) {
-            throw new DDFException(e);
+        maxRows = maxRows == null ? Integer.MAX_VALUE : maxRows;
+        MRData data = getMrData(command, this.getDDF().getSchemaHandler().newTableName());
+        List<String> strings;
+        if (data instanceof Bag) {
+            Bag bag = (Bag) data;
+            strings = new ArrayList<>(bag.size());
+            int count = 0;
+            for (MRData mrData : bag) {
+                Tuple tuple = (Tuple) mrData;
+                String[] row = new String[tuple.size()];
+                for (short i = 0; i < tuple.size(); i++) {
+                    row[i] = tuple.get(i).toString();
+                }
+                strings.add(StringUtils.join(row, ","));
+                count++;
+                if (count >= maxRows) break;
+            }
+        } else {
+            strings = new ArrayList<>(1);
+            strings.add(data.toString());
         }
+        return strings;
     }
+
 }

@@ -55,7 +55,7 @@ object RootBuild extends Build {
 //  }
   val sparkJarName = sparkProjectName.toLowerCase + "_" + theScalaVersion + "-" + sparkVersion + ".jar"
   val sparkTestJarName = sparkProjectName.toLowerCase + "_" + theScalaVersion + "-" + sparkVersion + "-tests.jar"
-  
+
 
   val examplesProjectName = projectName + "_examples"
   val examplesVersion = rootVersion
@@ -64,7 +64,7 @@ object RootBuild extends Build {
 
   val flinkProjectName = "ddf_flink"
   val flinkVersion = "0.8.1"
-  
+
   lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, flink,examples)
   lazy val core = Project("core", file("core"), settings = coreSettings)
   lazy val spark = Project("spark", file("spark"), settings = sparkSettings) dependsOn (core)
@@ -136,7 +136,7 @@ object RootBuild extends Build {
     //"commons-dbcp" % "commons-dbcp" % "1.4",
     //"org.apache.derby" % "derby" % "10.4.2.0",
    // "org.apache.spark" % "spark-streaming_2.10" % SPARK_VERSION excludeAll(excludeSpark),
-    "org.apache.spark" % "spark-core_2.10" % SPARK_VERSION excludeAll(excludeJets3t) exclude("com.google.protobuf", "protobuf-java") 
+    "org.apache.spark" % "spark-core_2.10" % SPARK_VERSION excludeAll(excludeJets3t) exclude("com.google.protobuf", "protobuf-java")
       exclude("org.jboss.netty", "netty") exclude("org.mortbay.jetty", "jetty"),
     //"org.apache.spark" % "spark-repl_2.10" % SPARK_VERSION excludeAll(excludeSpark) exclude("com.google.protobuf", "protobuf-java") exclude("io.netty", "netty-all") exclude("org.jboss.netty", "netty"),
     "org.apache.spark" % "spark-mllib_2.10" % SPARK_VERSION excludeAll(excludeSpark) exclude("io.netty", "netty-all"),
@@ -155,7 +155,9 @@ object RootBuild extends Build {
     "org.apache.flink" % "flink-core" % flinkVersion,
     "org.apache.flink" % "flink-java" % flinkVersion,
     "org.apache.flink" % "flink-scala" % flinkVersion,
-    "org.apache.flink" % "flink-clients" % flinkVersion
+    "org.apache.flink" % "flink-clients" % flinkVersion,
+    "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0",
+    "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a"
   )
 
 
@@ -184,7 +186,7 @@ object RootBuild extends Build {
     // Now, sometimes missing .jars in ~/.m2 can lead to sbt compile errors.
     // In that case, clean up the ~/.m2 local repository using bin/clean-m2-repository.sh
     // @aht: needs this to get Rserve jars, I don't know how to publish to adatao/mvnrepos
-    
+
     resolvers ++= Seq(
       //"BetaDriven Repository" at "http://nexus.bedatadriven.com/content/groups/public/",
       "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository",
@@ -211,7 +213,7 @@ object RootBuild extends Build {
       //"org.scalatest" % "scalatest_2.10" % "2.1.0" % "test",
       "org.scalatest" % "scalatest_2.10" % "2.1.5" % "test",
       "org.scalacheck"   %% "scalacheck" % "1.11.3" % "test",
-      "com.novocode" % "junit-interface" % "0.10" % "test",	
+      "com.novocode" % "junit-interface" % "0.10" % "test",
       "org.jblas" % "jblas" % "1.2.3", // for fast linear algebra
       "com.googlecode.matrix-toolkits-java" % "mtj" % "0.9.14",
       "commons-io" % "commons-io" % "1.3.2",
@@ -310,7 +312,7 @@ object RootBuild extends Build {
                 <reuseForks>false</reuseForks>
                 <enableAssertions>false</enableAssertions>
                 <environmentVariables>
-                    <RSERVER_JAR>${{basedir}}/{targetDir}/*.jar,${{basedir}}/{targetDir}/lib/*</RSERVER_JAR>              
+                    <RSERVER_JAR>${{basedir}}/{targetDir}/*.jar,${{basedir}}/{targetDir}/lib/*</RSERVER_JAR>
                 </environmentVariables>
                 <systemPropertyVariables>
                   <spark.serializer>org.apache.spark.serializer.KryoSerializer</spark.serializer>
@@ -367,7 +369,7 @@ object RootBuild extends Build {
                 <outputFileFormat>xml</outputFileFormat>
               </configuration>
             </plugin>
-            
+
             <!--
             <plugin>
                 <groupId>org.scalastyle</groupId>
