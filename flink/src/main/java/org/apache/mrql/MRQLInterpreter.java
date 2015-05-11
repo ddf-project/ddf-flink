@@ -16,10 +16,15 @@
 
 package org.apache.mrql;
 
+import io.ddf.content.Schema;
+import org.apache.mrql.gen.Node;
 import org.apache.mrql.gen.Tree;
+import org.apache.mrql.gen.VariableLeaf;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * User: satya
@@ -68,4 +73,40 @@ public class MRQLInterpreter extends FlinkEvaluator {
     public static Tree topLevelQueryType() {
         return TopLevel.query_type;
     }
+
+    public static List<Schema.Column> getSchemaColumns() {
+        List<Schema.Column> columns = new ArrayList<>();
+        addColumns(columns, topLevelQueryType());
+        return columns;
+    }
+
+    public static void addColumns(List<Schema.Column> columns, Tree tree) {
+        if (tree.is_node()) {
+            Node node = (Node) tree;
+            if (node.name().equalsIgnoreCase("bind")) {
+                //these are the actual columns.
+                Tree colName = node.children.head;
+                Tree colType = node.children.tail.head;
+                columns.add(new Schema.Column(colName.stringValue(), colType.stringValue()));
+            } else {
+                addColumns(columns, node.children.head);
+                for (Tree kid : node.children.tail) {
+                    addColumns(columns, kid);
+                }
+            }
+        } else {
+            if (tree.is_double()) {
+                columns.add(new Schema.Column("VDouble", "double"));
+            } else if (tree.is_long()) {
+                columns.add(new Schema.Column("VLong", "long"));
+            } else if (tree.is_string()) {
+                columns.add(new Schema.Column("VString", "string"));
+            } else if (tree.is_variable()) {
+                VariableLeaf variableLeaf = (VariableLeaf) tree;
+                columns.add(new Schema.Column("V" + variableLeaf.value, variableLeaf.value));
+            }
+        }
+
+    }
+
 }

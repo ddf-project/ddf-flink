@@ -27,9 +27,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.mrql.*;
-import org.apache.mrql.gen.Node;
-import org.apache.mrql.gen.Tree;
-import org.apache.mrql.gen.VariableLeaf;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,9 +88,7 @@ public class SqlHandler extends ASqlHandler {
         ///This whole deal with static methods is lousy really
         //MRQL is not well designed. Our interpreter just extends from one of the existing ones.
         MRQLInterpreter.evaluate(String.format("store %s := %s", tableName, command));
-        Tree queryType = MRQLInterpreter.topLevelQueryType();
-        List<Schema.Column> columns = new ArrayList<>();
-        addColumns(columns, queryType);
+        List<Schema.Column> columns = MRQLInterpreter.getSchemaColumns();
         MRData data = MRQLInterpreter.lookup_global_binding(tableName);
         return new Tuple2<>(data, columns);
     }
@@ -153,36 +148,6 @@ public class SqlHandler extends ASqlHandler {
             strings.add(data.toString());
         }
         return strings;
-    }
-
-
-    public static void addColumns(List<Schema.Column> columns, Tree tree) {
-        if (tree.is_node()) {
-            Node node = (Node) tree;
-            if (node.name().equalsIgnoreCase("bind")) {
-                //these are the actual columns.
-                Tree colName = node.children.head;
-                Tree colType = node.children.tail.head;
-                columns.add(new Schema.Column(colName.stringValue(), colType.stringValue()));
-            } else {
-                addColumns(columns, node.children.head);
-                for (Tree kid : node.children.tail) {
-                    addColumns(columns, kid);
-                }
-            }
-        } else {
-            if (tree.is_double()) {
-                columns.add(new Schema.Column("VDouble", "double"));
-            } else if (tree.is_long()) {
-                columns.add(new Schema.Column("VLong", "long"));
-            } else if (tree.is_string()) {
-                columns.add(new Schema.Column("VString", "string"));
-            } else if (tree.is_variable()) {
-                VariableLeaf variableLeaf = (VariableLeaf) tree;
-                columns.add(new Schema.Column("V" + variableLeaf.value, variableLeaf.value));
-            }
-        }
-
     }
 
 }
