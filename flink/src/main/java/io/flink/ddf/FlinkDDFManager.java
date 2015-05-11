@@ -44,7 +44,7 @@ public class FlinkDDFManager extends DDFManager {
             Config.flink_mode = true;
             Configuration conf = new Configuration();
             Config.write(conf);
-            MRQL.clean();
+            MRQLInterpreter.clean();
             Evaluator.evaluator = new FlinkEvaluator();
             Plan.conf = conf;
             Evaluator.evaluator.init(conf);
