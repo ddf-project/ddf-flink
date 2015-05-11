@@ -18,6 +18,7 @@ import io.ddf.DDF;
 import io.ddf.DDFManager;
 import io.ddf.content.Schema;
 import io.ddf.exception.DDFException;
+import io.flink.ddf.utils.Utils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;

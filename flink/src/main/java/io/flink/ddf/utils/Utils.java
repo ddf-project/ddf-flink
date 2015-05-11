@@ -14,20 +14,16 @@
  * limitations under the License.
  */
 
-package io.flink.ddf;
+package io.flink.ddf.utils;
 
 import io.ddf.content.Schema;
-import io.flink.ddf.utils.SerializedListAccumulator;
 import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.io.DiscardingOutputFormat;
 import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.AbstractID;
-import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -38,32 +34,6 @@ import java.util.List;
  * User: satya
  */
 public class Utils {
-
-    public static class CollectHelper<T> extends RichFlatMapFunction<T, T> {
-
-        private static final long serialVersionUID = 1L;
-
-        private final String id;
-        private final TypeSerializer<T> serializer;
-
-        private SerializedListAccumulator<T> accumulator;
-
-        public CollectHelper(String id, TypeSerializer<T> serializer) {
-            this.id = id;
-            this.serializer = serializer;
-        }
-
-        @Override
-        public void open(Configuration parameters) throws Exception {
-            this.accumulator = new SerializedListAccumulator<T>();
-            getRuntimeContext().addAccumulator(id, accumulator);
-        }
-
-        @Override
-        public void flatMap(T value, Collector<T> out) throws Exception {
-            accumulator.add(value, serializer);
-        }
-    }
 
 
     /**
@@ -76,7 +46,7 @@ public class Utils {
         final String id = new AbstractID().toString();
         final TypeSerializer serializer = dataSet.getType().createSerializer();
 
-        dataSet.flatMap(new Utils.CollectHelper(id, serializer)).output(new DiscardingOutputFormat());
+        dataSet.flatMap(new CollectHelper(id, serializer)).output(new DiscardingOutputFormat());
         JobExecutionResult res = env.execute();
 
         ArrayList<byte[]> accResult = res.getAccumulatorResult(id);
@@ -90,14 +60,13 @@ public class Utils {
     }
 
 
-
     /**
      * TODO: check more than a few lines in case some lines have NA
      *
      * @param dataSet
      * @return
      */
-    public static Tuple3<String[], List<Schema.Column>, String[]> getMetaInfo(ExecutionEnvironment env,final Logger mLog , DataSet<String> dataSet, String fieldSeparator, boolean hasHeader, boolean doPreferDouble) throws Exception {
+    public static Tuple3<String[], List<Schema.Column>, String[]> getMetaInfo(ExecutionEnvironment env, final Logger mLog, DataSet<String> dataSet, String fieldSeparator, boolean hasHeader, boolean doPreferDouble) throws Exception {
         String[] headers;
         int sampleSize = 5;
 
