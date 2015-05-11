@@ -22,12 +22,10 @@ import io.ddf.etl.ASqlHandler;
 import io.ddf.exception.DDFException;
 import io.flink.ddf.FlinkDDF;
 import io.flink.ddf.FlinkDDFManager;
-import io.flink.ddf.Utils;
 import io.flink.ddf.content.PersistenceHandler;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.mrql.*;
 import org.apache.mrql.gen.Node;
 import org.apache.mrql.gen.Tree;
@@ -83,7 +81,7 @@ public class SqlHandler extends ASqlHandler {
         schema.setColumns(result.f1);
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
         DDF ddf = new FlinkDDF(manager, data, new Class[]{MRData.class}, null, tableName, schema);
-        //addStringRepresentation(tableName, ddf);
+        addStringRepresentation(tableName, ddf);
         return ddf;
     }
 
@@ -109,6 +107,10 @@ public class SqlHandler extends ASqlHandler {
      * @param ddf
      * @throws DDFException
      */
+    private void addTupleRepresentation(String tableName, DDF ddf) throws DDFException {
+
+    }
+
     private void addStringRepresentation(String tableName, DDF ddf) throws DDFException {
         //will dump this as a CSV.
         PersistenceHandler persistenceHandler = (PersistenceHandler) ddf.getPersistenceHandler();
@@ -117,15 +119,7 @@ public class SqlHandler extends ASqlHandler {
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
         String pathToRead = persistenceHandler.getDataFileNameAsURI();
         DataSet<String> textFile = manager.getExecutionEnvironment().readTextFile(pathToRead);
-        try {
-            Tuple3<String[], List<Schema.Column>, String[]> metaInfo = Utils.getMetaInfo(manager.getExecutionEnvironment(), mLog, textFile, ",", false, true);
-            Schema schema = ddf.getSchema();
-            schema.setColumns(metaInfo.f1);
-            //add a representation as a Flink DataSet
-            ddf.getRepresentationHandler().add(textFile, DataSet.class, String.class);
-        } catch (Exception e) {
-            throw new DDFException(e);
-        }
+        ddf.getRepresentationHandler().add(textFile, DataSet.class, String.class);
     }
 
 
