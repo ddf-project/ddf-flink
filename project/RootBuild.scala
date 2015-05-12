@@ -152,13 +152,13 @@ object RootBuild extends Build {
   )
 
   val flink_dependencies = Seq(
-    "org.apache.flink" % "flink-core" % flinkVersion,
-    "org.apache.flink" % "flink-java" % flinkVersion,
-    "org.apache.flink" % "flink-scala" % flinkVersion,
-    "org.apache.flink" % "flink-clients" % flinkVersion,
-	  "org.apache.flink" % "flink-streaming-core" % flinkVersion,
-	  "org.apache.flink" % "flink-streaming-scala" % flinkVersion,
-	  "org.apache.flink" % "flink-compiler" % flinkVersion,
+    "org.apache.flink" % "flink-core" % flinkVersion exclude("junit", "junit"),
+    "org.apache.flink" % "flink-java" % flinkVersion exclude("junit", "junit"),
+    "org.apache.flink" % "flink-scala" % flinkVersion exclude("junit", "junit"),
+    "org.apache.flink" % "flink-clients" % flinkVersion exclude("junit", "junit"),
+	  "org.apache.flink" % "flink-streaming-core" % flinkVersion exclude("junit", "junit"),
+	  "org.apache.flink" % "flink-streaming-scala" % flinkVersion exclude("junit", "junit"),
+	  "org.apache.flink" % "flink-compiler" % flinkVersion exclude("junit", "junit"),
     "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm","asm"),
     "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a"
   )
