@@ -152,15 +152,15 @@ object RootBuild extends Build {
   )
 
   val flink_dependencies = Seq(
-    "org.apache.flink" % "flink-core" % flinkVersion,
-    "org.apache.flink" % "flink-java" % flinkVersion,
-    "org.apache.flink" % "flink-scala" % flinkVersion,
-    "org.apache.flink" % "flink-clients" % flinkVersion,
-	  "org.apache.flink" % "flink-streaming-core" % flinkVersion,
-	  "org.apache.flink" % "flink-streaming-scala" % flinkVersion,
-	  "org.apache.flink" % "flink-compiler" % flinkVersion,
+    "org.apache.flink" % "flink-core" % flinkVersion  exclude("asm","asm"),
+    "org.apache.flink" % "flink-java" % flinkVersion  exclude("asm","asm"),
+    "org.apache.flink" % "flink-scala" % flinkVersion  exclude("asm","asm"),
+    "org.apache.flink" % "flink-clients" % flinkVersion  exclude("asm","asm"),
+	  "org.apache.flink" % "flink-streaming-core" % flinkVersion  exclude("asm","asm"),
+	  "org.apache.flink" % "flink-streaming-scala" % flinkVersion  exclude("asm","asm"),
+	  "org.apache.flink" % "flink-compiler" % flinkVersion  exclude("asm","asm"),
     "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm","asm"),
-    "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a"
+    "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a"  exclude("asm","asm")
   )
 
 
@@ -510,7 +510,7 @@ object RootBuild extends Build {
 //      exclude("tomcat", "jasper-compiler") exclude("tomcat", "jasper-runtime") exclude("org.mortbay.jetty", "servlet-api-2.5")
 //      exclude("org.mortbay.jetty", "jetty"),
     libraryDependencies += "org.apache.hadoop" % "hadoop-common" % "2.2.0" exclude("org.mortbay.jetty", "servlet-api")
-      exclude("javax.servlet", "servlet-api"),
+      exclude("javax.servlet", "servlet-api") exclude("asm", "asm"),
     libraryDependencies += "org.jgrapht" % "jgrapht-core" % "0.9.0",
     libraryDependencies ++= scalaDependencies,
     testOptions in Test += Tests.Argument("-oI")
@@ -573,12 +573,12 @@ object RootBuild extends Build {
   def flinkSettings = commonSettings++ Seq(
     name := flinkProjectName,
     compile in Compile <<= compile in Compile andFinally { List("sh", "-c", "touch flink/" + targetDir + "/*timestamp") },
+    testOptions in Test += Tests.Argument("-oI"),
     libraryDependencies ++= com_adatao_unmanaged_flink,
     libraryDependencies ++=flink_dependencies,
     dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
     dependencyOverrides += "joda-time" % "joda-time" % "2.7",
-    dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2",
-    dependencyOverrides += "org.ow2.asm" % "asm" % "4.0"
+    dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2"
   ) ++ assemblySettings ++ extraAssemblySettings
 
 
