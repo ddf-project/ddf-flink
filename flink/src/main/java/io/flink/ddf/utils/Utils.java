@@ -190,4 +190,30 @@ public class Utils {
         return result;
     }
 
+
+    public static Object object(String value, Schema.Column column) {
+        if (value == null) return null;
+        else {
+            return object(value, column.getType());
+        }
+    }
+
+    public static Object object(String s, Schema.ColumnType columnType) {
+        switch (columnType) {
+            case INT:
+                return Integer.valueOf(s);
+            case FLOAT:
+                return Float.valueOf(s);
+            case DOUBLE:
+                return Double.valueOf(s);
+            case LONG:
+            case BIGINT:
+                return Long.valueOf(s);
+            case LOGICAL:
+                return Boolean.valueOf(s);
+            default:
+                return s;
+        }
+    }
+
 }

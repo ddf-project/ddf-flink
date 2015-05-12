@@ -33,7 +33,7 @@ public class FlinkDDFManagerTests extends BaseTest {
         DDF ddf = manager.sql2ddf("select (a.year, a.month, a.dayofweek, a.deptime, a.arrtime,a.origin, a.distance, a.arrdelay, "
                 + "a.depdelay, a.carrierdelay, a.weatherdelay, a.nasdelay, a.securitydelay, a.lateaircraftdelay) from a in airline");
 
-        //Assert.assertEquals(14, ddf.getSummary().length);
+        Assert.assertEquals(14, ddf.getSummary().length);
         Assert.assertEquals("ddf://adatao/" + ddf.getName(), ddf.getUri());
 
         manager.addDDF(ddf);

@@ -23,7 +23,9 @@ import io.ddf.exception.DDFException;
 import io.flink.ddf.FlinkDDF;
 import io.flink.ddf.FlinkDDFManager;
 import io.flink.ddf.content.PersistenceHandler;
+import io.flink.ddf.utils.Utils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.mrql.*;
@@ -78,8 +80,8 @@ public class SqlHandler extends ASqlHandler {
         schema.setColumns(result.f1);
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
         DDF ddf = new FlinkDDF(manager, data, new Class[]{MRData.class}, null, tableName, schema);
-        addStringRepresentation(tableName, ddf);
-        addTupleRepresentation(tableName, ddf);
+        addStringRepresentation(ddf);
+        addObjectRepresentation(ddf);
         return ddf;
     }
 
@@ -93,17 +95,31 @@ public class SqlHandler extends ASqlHandler {
         return new Tuple2<>(data, columns);
     }
 
-    private void addTupleRepresentation(String tableName, DDF ddf) throws DDFException {
-        //TODO How do we get the Flink Dataset representation.
-        //This should be a tuple. We have the DDF schema with us as a result of getting the query type
-        //Now we need to make it into a DataSet<Tuple>.
-        //We will need a dynamic TupleBuilder Function which can then be used to map each line of the file to a tuple
+    private void addObjectRepresentation(DDF ddf) throws DDFException {
+        DataSet<String> textFile = (DataSet<String>) ddf.getRepresentationHandler().get(DataSet.class, String.class);
+        List<Schema.Column> columnList = ddf.getSchema().getColumns();
+        final int colSize = columnList.size();
+        Schema.Column[] cols = new Schema.Column[colSize];
+        final Schema.Column[] columns = columnList.toArray(cols);
+        DataSet<Object[]> objects = textFile.map(new MapFunction<String, Object[]>() {
+            @Override
+            public Object[] map(String value) throws Exception {
+                String[] valueStr = value.split(",");
+                Object[] values = new Object[colSize];
+                for (int i = 0; i < colSize; i++) {
+                    values[i] = Utils.object(valueStr[i], columns[i]);
+                }
+                return values;
+            }
+        });
+        ddf.getRepresentationHandler().add(objects, DataSet.class, Object[].class);
+
     }
 
-    private void addStringRepresentation(String tableName, DDF ddf) throws DDFException {
+    private void addStringRepresentation(DDF ddf) throws DDFException {
         //will dump this as a CSV.
         PersistenceHandler persistenceHandler = (PersistenceHandler) ddf.getPersistenceHandler();
-        String dumpStr = String.format("dump '%s' from %s;", persistenceHandler.getDataFileName(), tableName);
+        String dumpStr = String.format("dump '%s' from %s;", persistenceHandler.getDataFileName(), ddf.getTableName());
         MRQL.evaluate(dumpStr);
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
         String pathToRead = persistenceHandler.getDataFileNameAsURI();

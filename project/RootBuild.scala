@@ -156,7 +156,10 @@ object RootBuild extends Build {
     "org.apache.flink" % "flink-java" % flinkVersion,
     "org.apache.flink" % "flink-scala" % flinkVersion,
     "org.apache.flink" % "flink-clients" % flinkVersion,
-    "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0",
+	  "org.apache.flink" % "flink-streaming-core" % flinkVersion,
+	  "org.apache.flink" % "flink-streaming-scala" % flinkVersion,
+	  "org.apache.flink" % "flink-compiler" % flinkVersion,
+    "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm","asm"),
     "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a"
   )
 
@@ -287,8 +290,6 @@ object RootBuild extends Build {
     dependencyOverrides += "com.sun.jersey" % "jersey-json" % "1.9",
     dependencyOverrides += "com.sun.jersey" % "jersey-server" % "1.9",
     dependencyOverrides += "org.scalamacros" % "quasiquotes_2.10" % "2.0.0",
-    dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
-	dependencyOverrides += "joda-time" % "joda-time" % "2.7",
     pomExtra := (
       <!--
       **************************************************************************************************
@@ -573,7 +574,11 @@ object RootBuild extends Build {
     name := flinkProjectName,
     compile in Compile <<= compile in Compile andFinally { List("sh", "-c", "touch flink/" + targetDir + "/*timestamp") },
     libraryDependencies ++= com_adatao_unmanaged_flink,
-    libraryDependencies ++=flink_dependencies
+    libraryDependencies ++=flink_dependencies,
+    dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
+    dependencyOverrides += "joda-time" % "joda-time" % "2.7",
+    dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2",
+    dependencyOverrides += "org.ow2.asm" % "asm" % "4.0"
   ) ++ assemblySettings ++ extraAssemblySettings
 
 
