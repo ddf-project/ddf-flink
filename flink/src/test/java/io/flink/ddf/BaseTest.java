@@ -27,6 +27,8 @@ import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.net.URL;
 import java.util.List;
 
 /**
@@ -61,7 +63,8 @@ public class BaseTest {
                 return input.getName().toLowerCase() + ":" + type.toLowerCase();
             }
         });
-        String sql = "source(line,'resources/test/airline.csv',',',type(<" + StringUtils.join(nameAndType, ",") + ">));";
+        String airlineCsv = Thread.currentThread().getContextClassLoader().getResource("airline.csv").getPath();
+        String sql = "source(line, '"+airlineCsv+"',',',type(<" + StringUtils.join(nameAndType, ",") + ">));";
         manager.sql2ddf(sql, schema);
 
     }
