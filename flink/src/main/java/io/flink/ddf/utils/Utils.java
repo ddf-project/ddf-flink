@@ -42,7 +42,7 @@ public class Utils {
      *
      * @return A List containing the elements of the DataSet
      */
-    public static List collect(ExecutionEnvironment env, DataSet dataSet) throws Exception {
+    public static <T> List<T> collect(ExecutionEnvironment env, DataSet<T> dataSet) throws Exception {
         final String id = new AbstractID().toString();
         final TypeSerializer serializer = dataSet.getType().createSerializer();
 
@@ -58,6 +58,7 @@ public class Utils {
             throw new RuntimeException("Serialization error while de-serializing collected data", e);
         }
     }
+
 
 
     /**
@@ -190,30 +191,5 @@ public class Utils {
         return result;
     }
 
-
-    public static Object object(String value, Schema.Column column) {
-        if (value == null) return null;
-        else {
-            return object(value, column.getType());
-        }
-    }
-
-    public static Object object(String s, Schema.ColumnType columnType) {
-        switch (columnType) {
-            case INT:
-                return Integer.valueOf(s);
-            case FLOAT:
-                return Float.valueOf(s);
-            case DOUBLE:
-                return Double.valueOf(s);
-            case LONG:
-            case BIGINT:
-                return Long.valueOf(s);
-            case LOGICAL:
-                return Boolean.valueOf(s);
-            default:
-                return s;
-        }
-    }
 
 }

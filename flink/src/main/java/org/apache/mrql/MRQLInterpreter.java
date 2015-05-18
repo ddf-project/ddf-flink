@@ -1,6 +1,10 @@
 package org.apache.mrql;
 
 import io.ddf.content.Schema;
+import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.io.FileInputFormat;
+import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.api.java.operators.DataSource;
 import org.apache.mrql.gen.Node;
 import org.apache.mrql.gen.Tree;
 import org.apache.mrql.gen.VariableLeaf;
@@ -8,9 +12,47 @@ import org.apache.mrql.gen.VariableLeaf;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * This class is badly designed. It follows limitations from the original MRQL Evaluator.
+ */
 public class MRQLInterpreter extends FlinkEvaluator {
+
+    public static final MRQLInterpreter INSTANCE = new MRQLInterpreter();
+    public static Map<String, DataSource> dataSourceMap = new HashMap<>();
+
+    static {
+        Evaluator.evaluator = INSTANCE;
+        final ExecutionEnvironment oldEnv = flink_env;
+        ExecutionEnvironment newEnv = new ExecutionEnvironment() {
+            @Override
+            public <X> DataSource<X> readFile(FileInputFormat<X> inputFormat, String filePath) {
+                DataSource dataSource = super.readFile(inputFormat, filePath);
+                dataSourceMap.put(filePath, dataSource);
+                return dataSource;
+            }
+
+            @Override
+            public JobExecutionResult execute(String s) throws Exception {
+                return oldEnv.execute(s);
+            }
+
+            @Override
+            public String getExecutionPlan() throws Exception {
+                return oldEnv.getExecutionPlan();
+            }
+        };
+        flink_env = newEnv;
+
+    }
+
+    public ExecutionEnvironment getExecutionEnvironment() {
+        return flink_env;
+    }
+
     /**
      * evaluate an MRQL query in a string
      *
@@ -22,6 +64,10 @@ public class MRQLInterpreter extends FlinkEvaluator {
         return variable_lookup("tt", global_env);
     }
 
+    public static void set(String var, MR_flink value) throws Exception {
+        global_env = new Environment(var, value, global_env);
+    }
+
     /**
      * evaluate MRQL statments in a string
      *
@@ -29,6 +75,7 @@ public class MRQLInterpreter extends FlinkEvaluator {
      */
     public static void evaluate(String command) {
         try {
+            set_global_bindings(global_env);
             MRQLLex scanner = new MRQLLex(new StringReader(command));
             MRQLParser parser = new MRQLParser(scanner);
             parser.setScanner(scanner);
@@ -89,5 +136,6 @@ public class MRQLInterpreter extends FlinkEvaluator {
         }
 
     }
+
 
 }

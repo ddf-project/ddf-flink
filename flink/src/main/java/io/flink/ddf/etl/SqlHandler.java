@@ -22,21 +22,24 @@ import io.ddf.etl.ASqlHandler;
 import io.ddf.exception.DDFException;
 import io.flink.ddf.FlinkDDF;
 import io.flink.ddf.FlinkDDFManager;
-import io.flink.ddf.content.PersistenceHandler;
-import io.flink.ddf.utils.Utils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.mrql.*;
+import org.apache.mrql.Bag;
+import org.apache.mrql.MRData;
+import org.apache.mrql.MRQLInterpreter;
+import org.apache.mrql.Tuple;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * User: satya
  */
 public class SqlHandler extends ASqlHandler {
+    static final String extractArgsRegex = "([^,]+\\(.+?\\))|([^,]+)";
+    static final Pattern argsPattern = Pattern.compile(extractArgsRegex);
+    static final Pattern words = Pattern.compile("\\w*");
 
     public SqlHandler(DDF theDDF) {
         super(theDDF);
@@ -69,62 +72,33 @@ public class SqlHandler extends ASqlHandler {
 
     @Override
     public DDF sql2ddf(String command, Schema schema, String dataSource, Schema.DataFormat dataFormat) throws DDFException {
+        if (command == null) throw new IllegalArgumentException("Statement cannot be null");
+        command = command.trim();
+
         String tableName = schema != null ? schema.getTableName() : null;
         if (tableName == null) tableName = this.getDDF().getSchemaHandler().newTableName();
         if (schema == null) {
             schema = new Schema(tableName, (String) null);
         }
         schema.setTableName(tableName);
+
         Tuple2<MRData, List<Schema.Column>> result = getResult(command, tableName);
         MRData data = result.f0;
         schema.setColumns(result.f1);
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
-        DDF ddf = new FlinkDDF(manager, data, new Class[]{MRData.class}, null, tableName, schema);
-        addStringRepresentation(ddf);
-        addObjectRepresentation(ddf);
-        return ddf;
+        return new FlinkDDF(manager, data, new Class[]{MRData.class}, null, tableName, schema);
     }
 
     private Tuple2<MRData, List<Schema.Column>> getResult(String command, String tableName) {
+
         if (!command.endsWith(";")) command += ";";
         ///This whole deal with static methods is lousy really
         //MRQL is not well designed. Our interpreter just extends from one of the existing ones.
-        MRQLInterpreter.evaluate(String.format("store %s := %s", tableName, command));
+        String toEval = String.format("store %s := %s", tableName, command);
+        MRQLInterpreter.evaluate(toEval);
         List<Schema.Column> columns = MRQLInterpreter.getSchemaColumns();
         MRData data = MRQLInterpreter.lookup_global_binding(tableName);
         return new Tuple2<>(data, columns);
-    }
-
-    private void addObjectRepresentation(DDF ddf) throws DDFException {
-        DataSet<String> textFile = (DataSet<String>) ddf.getRepresentationHandler().get(DataSet.class, String.class);
-        List<Schema.Column> columnList = ddf.getSchema().getColumns();
-        final int colSize = columnList.size();
-        Schema.Column[] cols = new Schema.Column[colSize];
-        final Schema.Column[] columns = columnList.toArray(cols);
-        DataSet<Object[]> objects = textFile.map(new MapFunction<String, Object[]>() {
-            @Override
-            public Object[] map(String value) throws Exception {
-                String[] valueStr = value.split(",");
-                Object[] values = new Object[colSize];
-                for (int i = 0; i < colSize; i++) {
-                    values[i] = Utils.object(valueStr[i], columns[i]);
-                }
-                return values;
-            }
-        });
-        ddf.getRepresentationHandler().add(objects, DataSet.class, Object[].class);
-
-    }
-
-    private void addStringRepresentation(DDF ddf) throws DDFException {
-        //will dump this as a CSV.
-        PersistenceHandler persistenceHandler = (PersistenceHandler) ddf.getPersistenceHandler();
-        String dumpStr = String.format("dump '%s' from %s;", persistenceHandler.getDataFileName(), ddf.getTableName());
-        MRQL.evaluate(dumpStr);
-        FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
-        String pathToRead = persistenceHandler.getDataFileNameAsURI();
-        DataSet<String> textFile = manager.getExecutionEnvironment().readTextFile(pathToRead);
-        ddf.getRepresentationHandler().add(textFile, DataSet.class, String.class);
     }
 
 

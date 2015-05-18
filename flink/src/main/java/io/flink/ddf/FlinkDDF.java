@@ -20,6 +20,7 @@ import io.ddf.DDF;
 import io.ddf.DDFManager;
 import io.ddf.content.Schema;
 import io.ddf.exception.DDFException;
+import org.apache.flink.api.java.DataSet;
 
 /**
  * User: satya
@@ -39,5 +40,9 @@ public class FlinkDDF extends DDF {
 
     public FlinkDDF(DDFManager manager) throws DDFException {
         super(manager);
+    }
+
+    public DataSet<Object[]> getDataSetOfObjects() throws DDFException {
+        return (DataSet<Object[]>) this.getRepresentationHandler().get(DataSet.class, Object[].class);
     }
 }

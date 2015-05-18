@@ -3,8 +3,10 @@ package io.flink.ddf.analytics;
 
 import io.ddf.DDF;
 import io.ddf.analytics.AStatisticsSupporter;
+import io.ddf.analytics.ISupportStatistics;
 import io.ddf.analytics.Summary;
 import io.ddf.exception.DDFException;
+import io.ddf.misc.ADDFFunctionalGroupHandler;
 import io.flink.ddf.FlinkDDFManager;
 import io.flink.ddf.utils.Utils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -20,14 +22,19 @@ import java.util.List;
 /**
  * Compute the basic statistics for each column in a DataSet-based DDF
  */
-public class BasicStatisticsComputer extends AStatisticsSupporter {
+public abstract class BasicStatisticsComputer extends ADDFFunctionalGroupHandler implements ISupportStatistics {
+    protected Summary[] basicStats;
 
     public BasicStatisticsComputer(DDF theDDF) {
         super(theDDF);
     }
 
+    public Summary[] getSummary() throws DDFException {
+        this.basicStats = getSummaryImpl();
+        return basicStats;
+    }
+
     @SuppressWarnings("unchecked")
-    @Override
     public Summary[] getSummaryImpl() throws DDFException {
         FlinkDDFManager manager = (FlinkDDFManager) this.getManager();
         DataSet<Object[]> data = (DataSet<Object[]>) this.getDDF().getRepresentationHandler().get(DataSet.class, Object[].class);
@@ -40,6 +47,16 @@ public class BasicStatisticsComputer extends AStatisticsSupporter {
         }
         if (stats != null && !stats.isEmpty()) return stats.get(0);
         return null;
+    }
+
+    @Override
+    public DDF getDDF() {
+        return super.getDDF();
+    }
+
+    @Override
+    public void setDDF(DDF theDDF) {
+        super.setDDF(theDDF);
     }
 
     /**

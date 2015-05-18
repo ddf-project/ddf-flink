@@ -27,8 +27,6 @@ import org.junit.BeforeClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.net.URL;
 import java.util.List;
 
 /**
@@ -54,7 +52,11 @@ public class BaseTest {
     }
 
     public void createTableAirline() throws DDFException {
-        Schema schema = new Schema("airline", "Year int,Month int,DayofMonth int,DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int,CRSArrTime int,UniqueCarrier string, FlightNum int,TailNum string, ActualElapsedTime int, CRSElapsedTime int,AirTime int, ArrDelay int, DepDelay int, Origin string,Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int,CancellationCode string, Diverted string, CarrierDelay int,WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int");
+//        Schema schema = new Schema("airline", "Year int,Month int,DayofMonth int,DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int,CRSArrTime int,UniqueCarrier string, FlightNum int,TailNum string, ActualElapsedTime int, CRSElapsedTime int,AirTime int, ArrDelay int, DepDelay int, Origin string,Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int,CancellationCode string, Diverted string, CarrierDelay int,WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int");
+//        String airlineCsv = Thread.currentThread().getContextClassLoader().getResource("airline.csv").getPath();
+//        String command = String.format("load('%s')", airlineCsv);
+//        manager.sql2ddf(command, schema);
+        Schema schema = new Schema("airline", "Year int,Month int,DayofMonth int,DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int,CRSArrTime int,UniqueCarrier string, FlightNum int,TailNum string, ActualElapsedTime int, CRSElapsedTime int,AirTime int, ArrDelay int, DepDelay int, Origin string,Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int,CancellationCode string, Diverted string, CarrierDelay string,WeatherDelay string, NASDelay string, SecurityDelay string, LateAircraftDelay string");
         List<Schema.Column> cols = schema.getColumns();
         List<String> nameAndType = Lists.transform(cols, new Function<Schema.Column, String>() {
             @Override
@@ -64,8 +66,9 @@ public class BaseTest {
             }
         });
         String airlineCsv = Thread.currentThread().getContextClassLoader().getResource("airline.csv").getPath();
-        String sql = "source(line, '"+airlineCsv+"',',',type(<" + StringUtils.join(nameAndType, ",") + ">));";
+        String sql = "source(line, '" + airlineCsv + "',',',type(<" + StringUtils.join(nameAndType, ",") + ">));";
         manager.sql2ddf(sql, schema);
+
 
     }
 }
