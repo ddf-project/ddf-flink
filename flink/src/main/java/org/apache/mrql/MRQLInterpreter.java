@@ -115,7 +115,9 @@ public class MRQLInterpreter extends FlinkEvaluator {
                 //these are the actual columns.
                 Tree colName = node.children.head;
                 Tree colType = node.children.tail.head;
-                columns.add(new Schema.Column(colName.stringValue(), colType.stringValue()));
+                String name = colName.toString();
+                String type = colType.variableValue();
+                columns.add(new Schema.Column(name, type));
             } else {
                 addColumns(columns, node.children.head);
                 for (Tree kid : node.children.tail) {

@@ -27,7 +27,7 @@ package io.flink.ddf.analytics
  *
  * @constructor Initialize the StatCounter with the given values.
  */
-case class StatCounter(values: TraversableOnce[Double]) extends Serializable {
+case class StatCounter(value: Double) extends Serializable {
   private var n: Long = 0
   // Running count of our values
   private var mu: Double = 0
@@ -38,10 +38,7 @@ case class StatCounter(values: TraversableOnce[Double]) extends Serializable {
   // Running max of our values
   private var minValue: Double = Double.PositiveInfinity // Running min of our values
 
-  merge(values)
-
-  /** Initialize the StatCounter with no values. */
-  def this() = this(Nil)
+  merge(value)
 
   /** Add a value into this StatCounter, updating the internal statistics. */
   def merge(value: Double): StatCounter = {
@@ -54,16 +51,10 @@ case class StatCounter(values: TraversableOnce[Double]) extends Serializable {
     this
   }
 
-  /** Add multiple values into this StatCounter, updating the internal statistics. */
-  def merge(values: TraversableOnce[Double]): StatCounter = {
-    values.foreach(v => merge(v))
-    this
-  }
-
   /** Merge another StatCounter into this one, adding up the internal statistics. */
   def merge(other: StatCounter): StatCounter = {
     if (other == this) {
-      merge(other.copy()) // Avoid overwriting fields in a weird order
+      this
     } else {
       if (n == 0) {
         mu = other.mu
@@ -85,13 +76,15 @@ case class StatCounter(values: TraversableOnce[Double]) extends Serializable {
         maxValue = math.max(maxValue, other.maxValue)
         minValue = math.min(minValue, other.minValue)
       }
+      println("**************************************" + this + "%%%%%%%" + other)
       this
     }
+
   }
 
   /** Clone this StatCounter */
   def copy(): StatCounter = {
-    val other = new StatCounter
+    val other = new StatCounter(value)
     other.n = n
     other.mu = mu
     other.m2 = m2
@@ -143,4 +136,6 @@ case class StatCounter(values: TraversableOnce[Double]) extends Serializable {
   override def toString: String = {
     "(count: %d, mean: %f, stdev: %f, max: %f, min: %f)".format(count, mean, stdev, max, min)
   }
+
+
 }

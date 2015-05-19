@@ -16,18 +16,23 @@
 
 package io.flink.ddf.content;
 
+import com.google.common.collect.Lists;
 import io.ddf.DDF;
 import io.ddf.content.ConvertFunction;
 import io.ddf.content.Representation;
 import io.ddf.content.Schema;
 import io.ddf.exception.DDFException;
 import io.flink.ddf.FlinkDDFManager;
+import io.flink.ddf.utils.Utils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.mrql.*;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
+import java.util.StringTokenizer;
 
 /**
  * User: satya
@@ -81,10 +86,22 @@ public class Conversions implements Serializable {
 
         @Override
         public Representation apply(Representation rep) throws DDFException {
-            DataSet<String> textFile = (DataSet<String>) rep.getValue();
-            final Schema.Column[] columns = getColumns();
-            DataSet<Object[]> objects = textFile.map(new StringToObjectArr(columns));
-            return new Representation(objects, DataSet.class, Object[].class);
+            try {
+                FlinkDDFManager manager = (FlinkDDFManager) ddf.getManager();
+                DataSet<String> textFile = (DataSet<String>) rep.getValue();
+                List<String> strings = Utils.collect(manager.getExecutionEnvironment(), textFile.first(1));
+                if (strings != null && !strings.isEmpty()) {
+                    DataSet<String> csv = getStringDataSet(textFile, strings);
+                    List<String> csvStrs = Utils.collect(manager.getExecutionEnvironment(), csv.first(1));
+                    final Schema.Column[] columns = getColumns();
+                    DataSet<Object[]> objects = csv.map(new StringToObjectArr(columns));
+                    return new Representation(objects, DataSet.class, Object[].class);
+                }
+                //return an empty data set
+                return new Representation(manager.getExecutionEnvironment().fromCollection(Collections.singleton(null)), DataSet.class, Object[].class);
+            } catch (Exception e) {
+                throw new DDFException(e);
+            }
         }
 
 
@@ -123,6 +140,7 @@ public class Conversions implements Serializable {
 
         @Override
         public Representation apply(Representation rep) throws DDFException {
+            FlinkDDFManager manager = (FlinkDDFManager) ddf.getManager();
             MRData mrData = (MRData) rep.getValue();
             if (mrData instanceof MR_flink) {
                 MR_flink mrFlink = (MR_flink) ddf.getRepresentationHandler().get(MRData.class);
@@ -141,19 +159,48 @@ public class Conversions implements Serializable {
                 });
                 return new Representation(dataSet, DataSet.class, Object[].class);
             } else {
-                PersistenceHandler persistenceHandler = (PersistenceHandler) ddf.getPersistenceHandler();
-                String dumpStr = String.format("dump '%s' from %s;", persistenceHandler.getDataFileName(), ddf.getTableName());
-                MRQL.evaluate(dumpStr);
-                FlinkDDFManager manager = (FlinkDDFManager) ddf.getManager();
-                String pathToRead = persistenceHandler.getDataFileNameAsURI();
-                DataSet<String> textFile = manager.getExecutionEnvironment().readTextFile(pathToRead);
-                //add a string representation
-                ddf.getRepresentationHandler().add(textFile, DataSet.class, String.class);
-                //now get the object representation
-                DataSet<Object[]> dataSet = (DataSet<Object[]>) ddf.getRepresentationHandler().get(DataSet.class, Object[].class);
-                return new Representation(dataSet, DataSet.class, Object[].class);
+                try {
+                    PersistenceHandler persistenceHandler = (PersistenceHandler) ddf.getPersistenceHandler();
+                    String dumpStr = String.format("store tt := select (a) from a in %s; dump '%s' from tt;", ddf.getTableName(), persistenceHandler.getDataFileName(), ddf.getTableName());
+                    MRQL.evaluate(dumpStr);
+                    String pathToRead = persistenceHandler.getDataFileNameAsURI();
+                    DataSet<String> textFile = manager.getExecutionEnvironment().readTextFile(pathToRead);
+                    //add a string representation
+                    ddf.getRepresentationHandler().add(textFile, DataSet.class, String.class);
+                    //now get the object representation
+                    DataSet<Object[]> dataSet = (DataSet<Object[]>) ddf.getRepresentationHandler().get(DataSet.class, Object[].class);
+                    return new Representation(dataSet, DataSet.class, Object[].class);
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return new Representation(manager.getExecutionEnvironment().fromCollection(Collections.emptyList()), DataSet.class, Object[].class);
             }
         }
+
+    }
+
+
+    private static DataSet<String> getStringDataSet(DataSet<String> textFile, List<String> strings) {
+        String first = strings.get(0);
+        if (first.startsWith("<")) {
+            DataSet<String> newDataSet = textFile.map(new MapFunction<String, String>() {
+                @Override
+                public String map(String s) throws Exception {
+                    String in = s.substring(1, s.length() - 1);
+                    StringTokenizer st = new StringTokenizer(in, ":,");
+                    List<String> tuple = Lists.newArrayList();
+                    while (st.hasMoreTokens()) {
+                        String key = st.nextToken();//ignore key
+                        String val = st.nextToken();
+                        tuple.add(val);
+                    }
+                    return StringUtils.join(tuple, ",");
+                }
+            });
+            return newDataSet;
+        }
+        return textFile;
     }
 
     public static Representation stringDataSet = new Representation(DataSet.class, String.class);
@@ -220,18 +267,20 @@ public class Conversions implements Serializable {
 
 
     public static Object object(String s, Schema.ColumnType columnType) {
+        if (s == null) return null;
+
         switch (columnType) {
             case INT:
-                return Integer.valueOf(s);
+                return Integer.valueOf(s.trim());
             case FLOAT:
-                return Float.valueOf(s);
+                return Float.valueOf(s.trim());
             case DOUBLE:
-                return Double.valueOf(s);
+                return Double.valueOf(s.trim());
             case LONG:
             case BIGINT:
-                return Long.valueOf(s);
+                return Long.valueOf(s.trim());
             case LOGICAL:
-                return Boolean.valueOf(s);
+                return Boolean.valueOf(s.trim());
             default:
                 return s;
         }
@@ -245,7 +294,11 @@ public class Conversions implements Serializable {
             case LONG:
             case BIGINT:
             case STRING:
-                Double.valueOf(o.toString());
+                Double doubleVal = Double.valueOf(o.toString());
+                if (doubleVal.isNaN()) {
+                    System.out.println("*****Warning " + o.toString() + " resolved to NaN");
+                }
+                return doubleVal;
             default:
                 throw new IllegalArgumentException(String.format("Cannot convert column of type %s to Double", columnType));
         }

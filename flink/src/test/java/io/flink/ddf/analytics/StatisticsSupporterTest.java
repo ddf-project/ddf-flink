@@ -13,15 +13,11 @@ import java.util.List;
 
 
 public class StatisticsSupporterTest extends BaseTest {
-    private DDF ddf, ddf1;
+    private DDF ddf;
 
     @Before
     public void setUp() throws Exception {
-        createTableAirline();
-
-        ddf = manager.sql2ddf("select (a.year, a.month, a.dayofweek, a.deptime, a.arrtime,a.origin, a.distance, a.arrdelay, "
-                + "a.depdelay, a.carrierdelay, a.weatherdelay, a.nasdelay, a.securitydelay, a.lateaircraftdelay) from a in airline");
-        ddf1 = manager.sql2ddf("select (a.year, a.month, a.dayofweek, a.deptime, a.arrdelay) from a in airline");
+        ddf = createTableAirline();
     }
 
     @Test
@@ -34,36 +30,34 @@ public class StatisticsSupporterTest extends BaseTest {
 
     //@Test TODO
     public void testSampling() throws DDFException {
-        DDF ddf2 = manager.sql2ddf("select (a) from a in airline");
-        Assert.assertEquals(25, ddf2.VIEWS.getRandomSample(25).size());
+        Assert.assertEquals(25, ddf.VIEWS.getRandomSample(25).size());
     }
 
     @Test
     public void testVectorVariance() throws DDFException {
-        DDF ddf2 = manager.sql2ddf("select (a) from a in airline");
-        Double[] a = ddf2.getVectorVariance("year");
+        Double[] a = ddf.getVectorVariance("year");
         assert (a != null);
         assert (a.length == 2);
+        System.out.println(">>>>> testVectorMean = " + a[0] + "," + a[1]);
     }
 
     @Test
     public void testVectorMean() throws DDFException {
-        DDF ddf2 = manager.sql2ddf("select (a) from a in airline");
-        Double a = ddf2.getVectorMean("year");
+        Double a = ddf.getVectorMean("year");
         assert (a != null);
         System.out.println(">>>>> testVectorMean = " + a);
     }
 
     // @Test
     public void testVectorCor() throws DDFException {
-        double a = ddf1.getVectorCor("year", "month");
+        double a = ddf.getVectorCor("year", "month");
         assert (a != Double.NaN);
         System.out.println(">>>>> testVectorCor = " + a);
     }
 
     //@Test
     public void testVectorCovariance() throws DDFException {
-        double a = ddf1.getVectorCor("year", "month");
+        double a = ddf.getVectorCor("year", "month");
         assert (a != Double.NaN);
         System.out.println(">>>>> testVectorCovariance = " + a);
     }
@@ -80,10 +74,11 @@ public class StatisticsSupporterTest extends BaseTest {
 
     @Test
     public void testVectorHistogram() throws DDFException {
-        List<HistogramBin> bins = ddf1.getVectorHistogram("arrdelay", 5);
+        List<HistogramBin> bins = ddf.getVectorHistogram("arrdelay", 5);
         Assert.assertEquals(5, bins.size());
-        Assert.assertEquals(-12.45, bins.get(0).getX(), 0.01);
-        Assert.assertEquals(11, bins.get(0).getY(), 0.01);
+        //Assert.assertEquals(-12.45, bins.get(0).getX(), 0.01);
+        Assert.assertEquals(-24, bins.get(0).getX(), 0.01);
+        Assert.assertEquals(10, bins.get(0).getY(), 0.01);
     }
 
 
