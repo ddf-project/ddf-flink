@@ -14,11 +14,12 @@ class FlinkRowDDFManagerSpec extends FlatSpec with Matchers {
     //MetaDataHandler
     ddf.getNumRows should be(31)
 
+    //StatisticsComputer
+    val summaries = ddf.getSummary
+    summaries.head.max() should be(2010)
 
-    /*val ddf2 = ddf.VIEWS.project("V1", "V2")
-    ddf.getColumnNames should have size(2)*/
-
-    //assert(ddf.getSummary.length == 2)
+    //mean:1084.26 stdev:999.14 var:998284.8 cNA:0 count:31 min:4.0 max:3920.0
+    val randomSummary = summaries(9)
+    randomSummary.variance() >= 998284
   }
-
 }
