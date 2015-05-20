@@ -5,6 +5,7 @@ import io.ddf.DDF;
 import io.ddf.analytics.AStatisticsSupporter.HistogramBin;
 import io.ddf.exception.DDFException;
 import io.flink.ddf.BaseTest;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,9 +23,8 @@ public class StatisticsSupporterTest extends BaseTest {
 
     @Test
     public void testSummary() throws DDFException {
-        Assert.assertEquals(14, ddf.getSummary().length);
-        //TODO
-        //Assert.assertEquals(31, ddf.getNumRows());
+        Assert.assertEquals(29, ddf.getSummary().length);
+        Assert.assertEquals(31, ddf.getNumRows());
     }
 
 
@@ -38,7 +38,7 @@ public class StatisticsSupporterTest extends BaseTest {
         Double[] a = ddf.getVectorVariance("year");
         assert (a != null);
         assert (a.length == 2);
-        System.out.println(">>>>> testVectorMean = " + a[0] + "," + a[1]);
+        System.out.println(">>>>> testVectorVariance = " + a[0] + "," + a[1]);
     }
 
     @Test
@@ -48,29 +48,29 @@ public class StatisticsSupporterTest extends BaseTest {
         System.out.println(">>>>> testVectorMean = " + a);
     }
 
-    // @Test
+    // @Test TODO
     public void testVectorCor() throws DDFException {
         double a = ddf.getVectorCor("year", "month");
         assert (a != Double.NaN);
         System.out.println(">>>>> testVectorCor = " + a);
     }
 
-    //@Test
+    //@Test TODO
     public void testVectorCovariance() throws DDFException {
         double a = ddf.getVectorCor("year", "month");
         assert (a != Double.NaN);
         System.out.println(">>>>> testVectorCovariance = " + a);
     }
 
-//  @Test
-//  public void testVectorQuantiles() throws DDFException {
-//    // Double[] quantiles = ddf1.getVectorQuantiles("deptime", {0.3, 0.5, 0.7});
-//    Double[] pArray = { 0.3, 0.5, 0.7 };
-//    Double[] expectedQuantiles = { 801.0, 1416.0, 1644.0 };
-//    Double[] quantiles = ddf1.getVectorQuantiles("deptime", pArray);
-//    System.out.println("Quantiles: " + StringUtils.join(quantiles, ", "));
-//    Assert.assertArrayEquals(expectedQuantiles, quantiles);
-//  }
+    @Test
+    public void testVectorQuantiles() throws DDFException {
+        // Double[] quantiles = ddf1.getVectorQuantiles("deptime", {0.3, 0.5, 0.7});
+        Double[] pArray = {0.3, 0.5, 0.7};
+        Double[] expectedQuantiles = {801.0, 1416.0, 1644.0};
+        Double[] quantiles = ddf.getVectorQuantiles("deptime", pArray);
+        System.out.println("Quantiles: " + StringUtils.join(quantiles, ", "));
+        Assert.assertArrayEquals(expectedQuantiles, quantiles);
+    }
 
     @Test
     public void testVectorHistogram() throws DDFException {

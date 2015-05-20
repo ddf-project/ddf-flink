@@ -160,7 +160,8 @@ object RootBuild extends Build {
 	  "org.apache.flink" % "flink-streaming-scala" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
 	  "org.apache.flink" % "flink-compiler" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
     "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm","asm"),
-    "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a"  exclude("asm","asm")
+    "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a"  exclude("asm","asm"),
+    "com.clearspring.analytics" % "stream" % "2.4.0"  exclude("asm","asm")
   )
 
 
@@ -290,6 +291,7 @@ object RootBuild extends Build {
     dependencyOverrides += "com.sun.jersey" % "jersey-json" % "1.9",
     dependencyOverrides += "com.sun.jersey" % "jersey-server" % "1.9",
     dependencyOverrides += "org.scalamacros" % "quasiquotes_2.10" % "2.0.0",
+    dependencyOverrides += "com.clearspring.analytics" % "stream" % "2.4.0",
     pomExtra := (
       <!--
       **************************************************************************************************

@@ -3,73 +3,69 @@ package io.flink.ddf.analytics
 
 import java.{lang, util}
 
-import com.google.common.collect.Lists
+import com.clearspring.analytics.stream.quantile.QDigest
 import io.ddf.DDF
 import io.ddf.analytics.AStatisticsSupporter.{FiveNumSummary, HistogramBin}
 import io.ddf.analytics.{AStatisticsSupporter, ISupportStatistics}
 import io.flink.ddf.content.Conversions
-import io.flink.ddf.{FlinkDDF, FlinkDDFManager}
-import org.apache.flink.api.java.aggregation.Aggregations
+import io.flink.ddf.utils._
+import io.flink.ddf.{FlinkDDFManager}
 import org.apache.flink.api.scala.{DataSet, _}
 
 import scala.collection.JavaConverters._
 
-/**
- * User: satya
- */
 class StatsHandler(theDDF: DDF) extends BasicStatisticsComputer(theDDF) with ISupportStatistics {
 
-  def scalaDataSet: DataSet[Array[Object]] = {
-    val flinkDDF = theDDF.asInstanceOf[FlinkDDF]
-    new DataSet[Array[Object]](flinkDDF.getDataSetOfObjects)
-  }
-
-  def stats(dataSet: DataSet[Double]): StatCounter = {
-    val manager = this.getManager.asInstanceOf[FlinkDDFManager];
-    val mapped = dataSet.map(i => new StatCounter(i))
-    val reduced = mapped.reduce((a, b) => a.merge(b))
-    val reducedList: util.List[StatCounter] = Stats.collect[StatCounter](manager.getExecutionEnvironment, reduced)
-    println(reducedList)
-    reducedList.get(0)
+  def doubleDataSet(columnName: String): DataSet[Double] = {
+    val dataSet: DataSet[Array[Object]] = Misc.scalaDataSet(theDDF)
+    val index = theDDF.getSchema.getColumnIndex(columnName);
+    val column = theDDF.getSchema.getColumn(index);
+    dataSet.map(t => Conversions.asDouble(t(index), column.getType))
   }
 
   override def getVectorVariance(columnName: String): Array[lang.Double] = {
     val sd: Array[lang.Double] = new Array[lang.Double](2)
-    sd(0) = stats(doubleDataSet(columnName)).sampleVariance
+    sd(0) = getSummary()(this.getDDF.getSchema.getColumnIndex(columnName)).variance
     sd(1) = Math.sqrt(sd(0));
     sd
   }
 
 
-  override def getVectorMean(columnName: String): lang.Double = stats(doubleDataSet(columnName)).mean
+  override def getVectorMean(columnName: String): lang.Double = getSummary()(this.getDDF.getSchema.getColumnIndex(columnName)).mean
 
-  override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = null
+  override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = {
+    val percentiles:Array[java.lang.Double] = Array(0.0001,0.25,0.5001,0.75,.9999)
+    columnNames.asScala.map{ columnName =>
+      val quantiles = getVectorQuantiles(columnName,percentiles)
+      new FiveNumSummary(quantiles(0),quantiles(1),quantiles(2),quantiles(3),quantiles(4))
+    }.toArray
+  }
 
-  override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = null
+  override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] ={
+    val manager = this.getManager.asInstanceOf[FlinkDDFManager];
+    val digests = doubleDataSet(columnName).mapPartition(Misc.qDigest( _)).reduce(QDigest.unionOf(_,_))
+    val reducedList: util.List[QDigest] = Misc.collect[QDigest](manager.getExecutionEnvironment, digests)
+    val finalDigest = reducedList.asScala.reduce(QDigest.unionOf(_,_))
+    percentiles.map(i=> scalaToJavaDouble(finalDigest.getQuantile(i).toDouble))
+  }
 
+  //TODO
   override def getVectorCor(xColumnName: String, yColumnName: String): Double = 0
 
+  //TODO
   override def getVectorCovariance(xColumnName: String, yColumnName: String): Double = 0
-
-
-  def doubleDataSet(columnName: String): DataSet[Double] = {
-    val dataSet: DataSet[Array[Object]] = scalaDataSet
-    val index = theDDF.getSchema.getColumnIndex(columnName);
-    val column = theDDF.getSchema.getColumn(index);
-    val doubleDataSet: DataSet[Double] = dataSet.map(t => Conversions.asDouble(t(index), column.getType))
-    doubleDataSet
-  }
 
   override def getVectorHistogram(columnName: String, numBins: Int): util.List[HistogramBin] = {
     val dataSet = doubleDataSet(columnName)
     val manager = this.getManager.asInstanceOf[FlinkDDFManager]
-    val max = Stats.collect(manager.getExecutionEnvironment,dataSet.reduce(_ max _)).get(0)
-    val min =  Stats.collect(manager.getExecutionEnvironment,dataSet.reduce(_ min _)).get(0)
+
+    val max = Misc.collect(manager.getExecutionEnvironment, dataSet.reduce(_ max _)).get(0)
+    val min = Misc.collect(manager.getExecutionEnvironment, dataSet.reduce(_ min _)).get(0)
 
     // Scala's built-in range has issues. See #SI-8782
     def customRange(min: Double, max: Double, steps: Int): IndexedSeq[Double] = {
       val span = max - min
-      Range.Int(0, steps, 1).map(s => min + (s * span) / steps) :+ max
+      Range.Int(0, steps - 1, 1).map(s => min + (s * span) / steps) :+ max
     }
 
     // Compute the minimum and the maximum
@@ -85,24 +81,21 @@ class StatsHandler(theDDF: DDF) extends BasicStatisticsComputer(theDDF) with ISu
     } else {
       List(min, min)
     }
-    val buckets = range.toArray
 
-    val hs = Stats.histogram(dataSet, buckets, true)
-    val ds: DataSet[Array[Long]] = dataSet.mapPartition(hs._1).reduce(hs._2)
-    val hist = Stats.collect(manager.getExecutionEnvironment, ds).get(0)
-    val bins: util.List[AStatisticsSupporter.HistogramBin] = Lists.newArrayList()
+    val buckets: Array[java.lang.Double] = range.toArray.map(i => scalaToJavaDouble(i))
+    val bins: util.List[HistogramBin] = new util.ArrayList[HistogramBin]()
     var i: Int = 0
-    while (i < hist.length) {
+    Misc.collectHistogram(manager.getExecutionEnvironment, doubleDataSet(columnName), buckets)
+      .asScala.foreach { entry =>
       val bin: AStatisticsSupporter.HistogramBin = new AStatisticsSupporter.HistogramBin
-      bin.setX(buckets(i))
-      bin.setY(hist(i))
-      i += 1
+      bin.setX(entry._1)
+      bin.setY(entry._2.toDouble)
       bins.add(bin)
     }
-
-    bins.asScala.foreach(bin => print(bin.getX + "," + bin.getY))
     bins
   }
+
+  def scalaToJavaDouble(d: Double): java.lang.Double = d.doubleValue
 
 
 }
