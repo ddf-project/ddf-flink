@@ -10,13 +10,13 @@ import org.apache.flink.api.scala.{ExecutionEnvironment, _}
 import org.apache.flink.api.table.Row
 import org.slf4j.LoggerFactory
 
-class FlinkRowDDFManager extends DDFManager {
+class FlinkDDFManager extends DDFManager {
 
   private val flinkExecutionEnvironment: ExecutionEnvironment = ExecutionEnvironment.getExecutionEnvironment
 
   private final val logger = LoggerFactory.getLogger(getClass)
 
-  override def getEngine: String = "flink-row"
+  override def getEngine: String = "flink"
 
   override def loadTable(fileURL: String, fieldSeparator: String): DDF = {
     val fileData: DataSet[Array[String]] = flinkExecutionEnvironment.readTextFile(fileURL).map(_.split(fieldSeparator))
@@ -35,7 +35,7 @@ class FlinkRowDDFManager extends DDFManager {
     }
 
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
-    val namespace: String = "flinkRowDDF"
+    val namespace: String = "FlinkDDF"
     val rand: SecureRandom = new SecureRandom
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
 

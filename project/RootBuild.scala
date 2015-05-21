@@ -21,7 +21,7 @@ object RootBuild extends Build {
   // Target JVM version
   val SCALAC_JVM_VERSION = "jvm-1.6"
   val JAVAC_JVM_VERSION = "1.6"
-  val theScalaVersion = "2.10.3"
+  val theScalaVersion = "2.10.4"
         val majorScalaVersion = theScalaVersion.split(".[0-9]+$")(0)
   val targetDir = "target/scala-" + majorScalaVersion // to help mvn and sbt share the same target dir
   //val theScalaVersion = "2.9.3"
@@ -106,17 +106,14 @@ object RootBuild extends Build {
     "com.adatao.unmanaged.net.rforge" % "Rserve" % "1.7.2.compiled"
   )
 
-  val com_adatao_unmanaged_flink = Seq(
-    "com.adatao.unmanaged.org.apache.mrql" % "mrql-core" % "0.9.6-incubating-SNAPSHOT",
-    "com.adatao.unmanaged.org.apache.mrql" % "mrql-gen" % "0.9.6-incubating-SNAPSHOT",
-    "com.adatao.unmanaged.org.apache.mrql" % "mrql-flink" % "0.9.6-incubating-SNAPSHOT",
-    "com.adatao.unmanaged.org.apache.flink" % "flink-core" % flinkVersion excludeAll(excludeJUnit),
-    "com.adatao.unmanaged.org.apache.flink" % "flink-java" % flinkVersion excludeAll(excludeJUnit),
-    "com.adatao.unmanaged.org.apache.flink" % "flink-scala" % flinkVersion excludeAll(excludeJUnit),
-    "com.adatao.unmanaged.org.apache.flink" % "flink-clients" % flinkVersion excludeAll(excludeJUnit),
-    "com.adatao.unmanaged.org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit),
-    "com.adatao.unmanaged.org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit),
-    "com.adatao.unmanaged.org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit)
+  val apache_flink_snapshots = Seq(
+    "org.apache.flink" % "flink-core" % flinkVersion excludeAll(excludeJUnit) changing(),
+    "org.apache.flink" % "flink-java" % flinkVersion excludeAll(excludeJUnit) changing(),
+    "org.apache.flink" % "flink-scala" % flinkVersion excludeAll(excludeJUnit) changing(),
+    "org.apache.flink" % "flink-clients" % flinkVersion excludeAll(excludeJUnit) changing(),
+    "org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit) changing(),
+    "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit) changing(),
+    "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit) changing()
   )
 
   val scalaArtifacts = Seq("jline", "scala-compiler", "scala-library", "scala-reflect")
@@ -198,10 +195,12 @@ object RootBuild extends Build {
       "Adatao Mvnrepos Releases" at "https://raw.github.com/adatao/mvnrepos/master/releases",
       "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/",
       "Cloudera Repository" at "https://repository.cloudera.com/artifactory/cloudera-repos/",
-      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/",
+      "Apache Snapshots" at "https://repository.apache.org/content/groups/snapshots/"
       //"Sonatype Testing" at "https://oss.sonatype.org/content/repositories/eduberkeleycs-1016"
 
       //"Sonatype Staging" at "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+
     ),
 
 
@@ -578,7 +577,7 @@ object RootBuild extends Build {
       List("sh", "-c", "touch flink/" + targetDir + "/*timestamp")
     },
     testOptions in Test += Tests.Argument("-oI"),
-    libraryDependencies ++= com_adatao_unmanaged_flink,
+    libraryDependencies ++= apache_flink_snapshots,
     libraryDependencies ++= flink_dependencies,
     dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
     dependencyOverrides += "joda-time" % "joda-time" % "2.7",

@@ -4,7 +4,7 @@ import io.ddf.DDF
 
 object FlinkDDFUtil {
   def getEnv(ddf: DDF) = {
-    ddf.getManager.asInstanceOf[FlinkRowDDFManager].getExecutionEnvironment
+    ddf.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
   }
 }
 
