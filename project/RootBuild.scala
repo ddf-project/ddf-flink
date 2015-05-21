@@ -114,7 +114,14 @@ object RootBuild extends Build {
   val com_adatao_unmanaged_flink = Seq(
     "com.adatao.unmanaged.org.apache.mrql" % "mrql-core" % "0.9.6-incubating-SNAPSHOT",
     "com.adatao.unmanaged.org.apache.mrql" % "mrql-gen" % "0.9.6-incubating-SNAPSHOT",
-    "com.adatao.unmanaged.org.apache.mrql" % "mrql-flink" % "0.9.6-incubating-SNAPSHOT"
+    "com.adatao.unmanaged.org.apache.mrql" % "mrql-flink" % "0.9.6-incubating-SNAPSHOT",
+    "org.apache.flink" % "flink-core" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-java" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-scala" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-clients" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit)
   )
 
   val scalaArtifacts = Seq("jline", "scala-compiler", "scala-library", "scala-reflect")
@@ -156,13 +163,6 @@ object RootBuild extends Build {
   )
 
   val flink_dependencies = Seq(
-    "org.apache.flink" % "flink-core" % flinkVersion excludeAll(excludeJUnit),
-    "org.apache.flink" % "flink-java" % flinkVersion excludeAll(excludeJUnit),
-    "org.apache.flink" % "flink-scala" % flinkVersion excludeAll(excludeJUnit),
-    "org.apache.flink" % "flink-clients" % flinkVersion excludeAll(excludeJUnit),
-    "org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit),
-    "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit),
-    "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit),
     "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm", "asm"),
     "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a" exclude("asm", "asm")
   )
