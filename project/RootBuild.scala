@@ -1,16 +1,14 @@
-import sbt._
 import sbt.Classpaths.publishTask
-import Keys._
+import sbt.Keys._
+import sbt._
+import sbtassembly.Plugin.AssemblyKeys._
 import sbtassembly.Plugin._
-import AssemblyKeys._
-import scala.sys.process._
-import scala.util.Properties.{ envOrNone => env }
-import scala.collection.JavaConversions._
+
+import scala.util.Properties.{envOrNone => env}
 
 
 object RootBuild extends Build {
 
-  //////// Project definitions/configs ///////
   //////// Project definitions/configs ///////
   val OBSELETE_HADOOP_VERSION = "1.0.4"
   val DEFAULT_HADOOP_VERSION = "2.2.0"
@@ -63,9 +61,9 @@ object RootBuild extends Build {
   val examplesTestJarName = examplesProjectName + "-" + sparkVersion + "-tests.jar"
 
   val flinkProjectName = "ddf_flink"
-  val flinkVersion = "0.8.1"
+  val flinkVersion = "0.9-SNAPSHOT"
 
-  lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, flink,examples)
+  lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, flink, examples)
   lazy val core = Project("core", file("core"), settings = coreSettings)
   lazy val spark = Project("spark", file("spark"), settings = sparkSettings) dependsOn (core)
   lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (spark) dependsOn (core)
@@ -88,7 +86,7 @@ object RootBuild extends Build {
   //val HADOOP_MAJOR_VERSION = "2"
 
   val slf4jVersion = "1.7.2"
-  val excludeAvro = ExclusionRule(organization = "org.apache.avro" , name = "avro-ipc")
+  val excludeAvro = ExclusionRule(organization = "org.apache.avro", name = "avro-ipc")
   val excludeJacksonCore = ExclusionRule(organization = "org.codehaus.jackson", name = "jackson-core-asl")
   val excludeJacksonMapper = ExclusionRule(organization = "org.codehaus.jackson", name = "jackson-mapper-asl")
   val excludeNetty = ExclusionRule(organization = "org.jboss.netty", name = "netty")
@@ -100,6 +98,7 @@ object RootBuild extends Build {
   val excludeEverthing = ExclusionRule(organization = "*", name = "*")
   val excludeEverythingHackForMakePom = ExclusionRule(organization = "_MAKE_POM_EXCLUDE_ALL_", name = "_MAKE_POM_EXCLUDE_ALL_")
 
+  val excludeJUnit = ExclusionRule(organization = "junit", name = "junit")
   // We define this explicitly rather than via unmanagedJars, so that make-pom will generate it in pom.xml as well
   // org % package % version
   val com_adatao_unmanaged = Seq(
@@ -110,15 +109,22 @@ object RootBuild extends Build {
   val com_adatao_unmanaged_flink = Seq(
     "com.adatao.unmanaged.org.apache.mrql" % "mrql-core" % "0.9.6-incubating-SNAPSHOT",
     "com.adatao.unmanaged.org.apache.mrql" % "mrql-gen" % "0.9.6-incubating-SNAPSHOT",
-    "com.adatao.unmanaged.org.apache.mrql" % "mrql-flink" % "0.9.6-incubating-SNAPSHOT"
+    "com.adatao.unmanaged.org.apache.mrql" % "mrql-flink" % "0.9.6-incubating-SNAPSHOT",
+    "com.adatao.unmanaged.org.apache.flink" % "flink-core" % flinkVersion excludeAll(excludeJUnit),
+    "com.adatao.unmanaged.org.apache.flink" % "flink-java" % flinkVersion excludeAll(excludeJUnit),
+    "com.adatao.unmanaged.org.apache.flink" % "flink-scala" % flinkVersion excludeAll(excludeJUnit),
+    "com.adatao.unmanaged.org.apache.flink" % "flink-clients" % flinkVersion excludeAll(excludeJUnit),
+    "com.adatao.unmanaged.org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit),
+    "com.adatao.unmanaged.org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit),
+    "com.adatao.unmanaged.org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit)
   )
 
   val scalaArtifacts = Seq("jline", "scala-compiler", "scala-library", "scala-reflect")
-  val scalaDependencies = scalaArtifacts.map( artifactId => "org.scala-lang" % artifactId % theScalaVersion)
+  val scalaDependencies = scalaArtifacts.map(artifactId => "org.scala-lang" % artifactId % theScalaVersion)
 
   val spark_dependencies = Seq(
     "commons-configuration" % "commons-configuration" % "1.6",
-    "com.google.code.gson"% "gson" % "2.2.2",
+    "com.google.code.gson" % "gson" % "2.2.2",
     //"javax.jdo" % "jdo2-api" % "2.3-ec",
 //    "org.eclipse.jetty" % "jetty-server" % "8.1.14.v20131031",
 //    "org.eclipse.jetty" % "jetty-security" % "8.1.14.v20131031",
@@ -152,15 +158,8 @@ object RootBuild extends Build {
   )
 
   val flink_dependencies = Seq(
-    "org.apache.flink" % "flink-core" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
-    "org.apache.flink" % "flink-java" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
-    "org.apache.flink" % "flink-scala" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
-    "org.apache.flink" % "flink-clients" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
-	  "org.apache.flink" % "flink-streaming-core" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
-	  "org.apache.flink" % "flink-streaming-scala" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
-	  "org.apache.flink" % "flink-compiler" % flinkVersion  exclude("asm","asm") exclude("junit", "junit"),
-    "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm","asm"),
-    "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a"  exclude("asm","asm"),
+    "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm", "asm"),
+    "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a" exclude("asm", "asm"),
     "com.clearspring.analytics" % "stream" % "2.4.0"  exclude("asm","asm")
   )
 
@@ -193,7 +192,7 @@ object RootBuild extends Build {
 
     resolvers ++= Seq(
       //"BetaDriven Repository" at "http://nexus.bedatadriven.com/content/groups/public/",
-      "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository",
+      "Local Maven Repository" at "file://" + Path.userHome.absolutePath + "/.m2/repository",
       //"Local ivy Repository" at "file://"+Path.userHome.absolutePath+"/.ivy2/local",
       "Adatao Mvnrepos Snapshots" at "https://raw.github.com/adatao/mvnrepos/master/snapshots",
       "Adatao Mvnrepos Releases" at "https://raw.github.com/adatao/mvnrepos/master/releases",
@@ -214,8 +213,7 @@ object RootBuild extends Build {
       "commons-configuration" % "commons-configuration" % "1.6",
       "com.google.guava" % "guava" % "14.0.1",
       "com.google.code.gson"% "gson" % "2.2.2",
-      //"org.scalatest" % "scalatest_2.10" % "2.1.0" % "test",
-      "org.scalatest" % "scalatest_2.10" % "2.1.5" % "test",
+      "org.scalatest" % "scalatest_2.10" % "2.2.2" % "test",
       "org.scalacheck"   %% "scalacheck" % "1.11.3" % "test",
       "com.novocode" % "junit-interface" % "0.10" % "test",
       "org.jblas" % "jblas" % "1.2.3", // for fast linear algebra
@@ -243,6 +241,9 @@ object RootBuild extends Build {
     //dependencyOverrides += "org.scala-lang" % "scala-compiler" % theScalaVersion,
     // dependencyOverrides += "commons-configuration" % "commons-configuration" % "1.6",
     // dependencyOverrides += "commons-logging" % "commons-logging" % "1.1.1",
+    dependencyOverrides ++= Set("com.fasterxml.jackson.core" % "jackson-core" % "2.2.1",
+                                "com.fasterxml.jackson.core" % "jackson-databind" % "2.2.1",
+                                "com.fasterxml.jackson.core" % "jackson-annotations" % "2.2.1"),
     dependencyOverrides += "commons-lang" % "commons-lang" % "2.6",
     dependencyOverrides += "it.unimi.dsi" % "fastutil" % "6.4.4",
     dependencyOverrides += "log4j" % "log4j" % "1.2.17",
@@ -256,7 +257,6 @@ object RootBuild extends Build {
     dependencyOverrides += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.8.8",
     dependencyOverrides += "org.codehaus.jackson" % "jackson-xc" % "1.8.8",
     dependencyOverrides += "org.codehaus.jackson" % "jackson-jaxrs" % "1.8.8",
-    dependencyOverrides += "com.fasterxml.jackson.core" % "jackson-databind" % "2.3.1",
     dependencyOverrides += "com.thoughtworks.paranamer" % "paranamer" % "2.4.1", //net.liftweb conflict with avro
     dependencyOverrides += "org.xerial.snappy" % "snappy-java" % "1.0.5", //spark-core conflicts with avro
     dependencyOverrides += "org.apache.httpcomponents" % "httpcore" % "4.1.4",
@@ -572,12 +572,14 @@ object RootBuild extends Build {
   ) ++ assemblySettings ++ extraAssemblySettings
 
 
-  def flinkSettings = commonSettings++ Seq(
+  def flinkSettings = commonSettings ++ Seq(
     name := flinkProjectName,
-    compile in Compile <<= compile in Compile andFinally { List("sh", "-c", "touch flink/" + targetDir + "/*timestamp") },
+    compile in Compile <<= compile in Compile andFinally {
+      List("sh", "-c", "touch flink/" + targetDir + "/*timestamp")
+    },
     testOptions in Test += Tests.Argument("-oI"),
     libraryDependencies ++= com_adatao_unmanaged_flink,
-    libraryDependencies ++=flink_dependencies,
+    libraryDependencies ++= flink_dependencies,
     dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
     dependencyOverrides += "joda-time" % "joda-time" % "2.7",
     dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2"
@@ -588,11 +590,10 @@ object RootBuild extends Build {
     name := examplesProjectName,
     //javaOptions in Test <+= baseDirectory map {dir => "-Dspark.classpath=" + dir + "/../lib_managed/jars/*"},
     // Add post-compile activities: touch the maven timestamp files so mvn doesn't have to compile again
-    compile in Compile <<= compile in Compile andFinally { List("sh", "-c", "touch examples/" + targetDir + "/*timestamp") }
+    compile in Compile <<= compile in Compile andFinally {
+      List("sh", "-c", "touch examples/" + targetDir + "/*timestamp")
+    }
   ) ++ assemblySettings ++ extraAssemblySettings
-
-
-
 
 
   def extraAssemblySettings() = Seq(test in assembly := {}) ++ Seq(

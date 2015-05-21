@@ -8,7 +8,6 @@ import io.ddf.analytics.Summary;
 import io.ddf.exception.DDFException;
 import io.ddf.misc.ADDFFunctionalGroupHandler;
 import io.flink.ddf.FlinkDDFManager;
-import io.flink.ddf.utils.Utils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.ReduceFunction;
@@ -41,7 +40,7 @@ public abstract class BasicStatisticsComputer extends ADDFFunctionalGroupHandler
         ReduceOperator<Summary[]> statsDataSet = data.map(new GetSummaryMapper()).reduce(new GetSummaryReducer());
         List<Summary[]> stats;
         try {
-            stats = Utils.collect(manager.getExecutionEnvironment(), statsDataSet);
+            stats = statsDataSet.collect();
         } catch (Exception e) {
             throw new DDFException(e);
         }

@@ -7,7 +7,7 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.io.DiscardingOutputFormat;
 import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.runtime.AbstractID;
+import org.apache.flink.util.AbstractID;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -15,32 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Utils {
-
-
-    /**
-     * Convenience method to get the elements of a DataSet as a List
-     * As DataSet can contain a lot of data, this method should be used with caution.
-     *
-     * @return A List containing the elements of the DataSet
-     */
-    public static <T> List<T> collect(ExecutionEnvironment env, DataSet<T> dataSet) throws Exception {
-        final String id = new AbstractID().toString();
-        final TypeSerializer serializer = dataSet.getType().createSerializer();
-
-        dataSet.flatMap(new CollectHelper(id, serializer)).output(new DiscardingOutputFormat());
-        JobExecutionResult res = env.execute();
-
-        ArrayList<byte[]> accResult = res.getAccumulatorResult(id);
-        try {
-            return SerializedListAccumulator.deserializeList(accResult, serializer);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Cannot find type class of collected data type.", e);
-        } catch (IOException e) {
-            throw new RuntimeException("Serialization error while de-serializing collected data", e);
-        }
-    }
-
-
 
     /**
      * TODO: check more than a few lines in case some lines have NA
@@ -54,7 +28,7 @@ public class Utils {
 
 
         DataSet<String> sampleData = dataSet.first(sampleSize);
-        List<String> sampleStr = Utils.collect(env, sampleData);
+        List<String> sampleStr = sampleData.collect();
         // actual sample size
         sampleSize = sampleStr.size();
         mLog.info("Sample size: " + sampleSize);

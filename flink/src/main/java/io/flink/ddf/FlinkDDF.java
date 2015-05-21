@@ -22,6 +22,7 @@ public class FlinkDDF extends DDF {
         super(manager);
     }
 
+
     public DataSet<Object[]> getDataSetOfObjects() throws DDFException {
         return (DataSet<Object[]>) this.getRepresentationHandler().get(DataSet.class, Object[].class);
     }

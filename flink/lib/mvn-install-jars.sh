@@ -54,6 +54,42 @@ function ScanDirs {
       GROUP_ID=com.adatao.unmanaged.org.apache.mrql ARTIFACT_ID=mrql-flink VERSION=0.9.6-incubating-SNAPSHOT MvnInstall
       continue
     fi
+    if [ "flink-core-0.9-SNAPSHOT.jar" == $jar ] ; then
+      # We can't parse this generically because all the hyphens in the name
+      GROUP_ID=com.adatao.unmanaged.org.apache.flink ARTIFACT_ID=flink-core VERSION=0.9-SNAPSHOT MvnInstall
+      continue
+    fi
+    if [ "flink-clients-0.9-SNAPSHOT.jar" == $jar ] ; then
+      # We can't parse this generically because all the hyphens in the name
+      GROUP_ID=com.adatao.unmanaged.org.apache.flink ARTIFACT_ID=flink-clients VERSION=0.9-SNAPSHOT MvnInstall
+      continue
+    fi
+    if [ "flink-java-0.9-SNAPSHOT.jar" == $jar ] ; then
+      # We can't parse this generically because all the hyphens in the name
+      GROUP_ID=com.adatao.unmanaged.org.apache.flink ARTIFACT_ID=flink-java VERSION=0.9-SNAPSHOT MvnInstall
+      continue
+    fi
+    if [ "flink-scala-0.9-SNAPSHOT.jar" == $jar ] ; then
+      # We can't parse this generically because all the hyphens in the name
+      GROUP_ID=com.adatao.unmanaged.org.apache.flink ARTIFACT_ID=flink-scala VERSION=0.9-SNAPSHOT MvnInstall
+      continue
+    fi
+    if [ "flink-optimizer-0.9-SNAPSHOT.jar" == $jar ] ; then
+      # We can't parse this generically because all the hyphens in the name
+      GROUP_ID=com.adatao.unmanaged.org.apache.flink ARTIFACT_ID=flink-optimizer VERSION=0.9-SNAPSHOT MvnInstall
+      continue
+    fi
+    if [ "flink-runtime-0.9-SNAPSHOT.jar" == $jar ] ; then
+      # We can't parse this generically because all the hyphens in the name
+      GROUP_ID=com.adatao.unmanaged.org.apache.flink ARTIFACT_ID=flink-runtime VERSION=0.9-SNAPSHOT MvnInstall
+      continue
+    fi
+    if [ "flink-table-0.9-SNAPSHOT.jar" == $jar ] ; then
+      # We can't parse this generically because all the hyphens in the name
+      GROUP_ID=com.adatao.unmanaged.org.apache.flink ARTIFACT_ID=flink-table VERSION=0.9-SNAPSHOT MvnInstall
+      continue
+    fi
+
     # Now do the normal stuff
     [ -f $jar ] && JAR=$jar ProcessJar
   done
