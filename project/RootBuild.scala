@@ -163,7 +163,6 @@ object RootBuild extends Build {
     "org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit),
     "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit),
     "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit),
-    "org.apache.flink" % "flink-test-utils" % flinkVersion % "test" excludeAll(excludeJUnit),
     "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm", "asm"),
     "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a" exclude("asm", "asm")
   )
