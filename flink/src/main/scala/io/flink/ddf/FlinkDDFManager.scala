@@ -6,7 +6,7 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.{DDF, DDFManager}
 import io.flink.ddf.utils.Utils
-import org.apache.flink.api.scala.{ExecutionEnvironment, _}
+import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
 import org.apache.flink.api.table.Row
 import org.slf4j.LoggerFactory
 
@@ -19,20 +19,12 @@ class FlinkDDFManager extends DDFManager {
   override def getEngine: String = "flink"
 
   override def loadTable(fileURL: String, fieldSeparator: String): DDF = {
-    val fileData: DataSet[Array[String]] = flinkExecutionEnvironment.readTextFile(fileURL).map(_.split(fieldSeparator))
+    val fileData: DataSet[Array[Object]] = flinkExecutionEnvironment
+      .readTextFile(fileURL)
+      .map(_.split(fieldSeparator).map(_.asInstanceOf[Object]))
 
-    val subset = fileData.first(5).collect()
+    val subset = fileData.first(5).map(_.map(_.toString)).collect()
     val columns: Array[Column] = getColumnInfo(subset)
-
-    val data: DataSet[Row] = fileData.map {
-      fields =>
-        val colSize = fields.length
-        val row = new Row(colSize)
-        (0 to colSize-1).foreach { index =>
-          row.setField(index, fields(index))
-        }
-        row
-    }
 
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
     val namespace: String = "FlinkDDF"
@@ -41,7 +33,7 @@ class FlinkDDFManager extends DDFManager {
 
     val schema: Schema = new Schema(tableName, columns)
 
-    val ddf = this.newDDF(data, typeSpecs, namespace, tableName, schema)
+    val ddf = this.newDDF(fileData, typeSpecs, namespace, tableName, schema)
     ddf
   }
 

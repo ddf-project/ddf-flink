@@ -12,7 +12,6 @@ import io.flink.ddf.FlinkDDFManager
 import io.flink.ddf.utils.Misc
 import org.apache.flink.api.common.functions.GroupReduceFunction
 import org.apache.flink.api.scala.{DataSet, _}
-import org.apache.flink.api.table.Row
 import org.apache.flink.util.Collector
 
 import scala.collection.JavaConversions._
@@ -74,11 +73,11 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     val column: Column = schema.getColumn(columnName)
     column.isNumeric match {
       case true =>
-        val data: DataSet[Row] = ddf.asInstanceOf[io.flink.ddf.FlinkDDF].getDataSet
+        val data: DataSet[Array[Object]] = ddf.asInstanceOf[io.flink.ddf.FlinkDDF].getDataSet
         val colIndex = ddf.getSchema.getColumnIndex(columnName)
         val colData = data.map {
           x =>
-            val elem = x.productElement(colIndex)
+            val elem = x(colIndex)
             val mayBeDouble = Try(elem.toString.trim.toDouble)
             mayBeDouble.getOrElse(0.0)
         }
@@ -88,14 +87,14 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   override protected def getSummaryImpl: Array[Summary] = {
-    val data: DataSet[Row] = ddf.asInstanceOf[io.flink.ddf.FlinkDDF].getDataSet
+    val data: DataSet[Array[Object]] = ddf.asInstanceOf[io.flink.ddf.FlinkDDF].getDataSet
     val colSize = ddf.getColumnNames.size()
 
     val colData: GroupedDataSet[(Int, String)] = data.flatMap { row =>
       (0 to colSize - 1).map {
         index =>
           //map each entry with its column index
-          val elem = row.productElement(index)
+          val elem = row(index)
           val elemOpt = if (elem == null) {
             null
           } else {

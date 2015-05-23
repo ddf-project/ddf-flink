@@ -5,15 +5,14 @@ import io.ddf.DDFManager;
 import io.ddf.content.Schema;
 import io.ddf.exception.DDFException;
 import org.apache.flink.api.scala.DataSet;
-import org.apache.flink.api.table.Row;
 
 public class FlinkDDF extends DDF {
 
-    private DataSet<Row> dataSet = null;
+    private DataSet<Object[]> dataSet = null;
 
     public FlinkDDF(DDFManager manager, Object data, Class<?>[] typeSpecs, String namespace, String name, Schema schema) throws DDFException {
         super(manager, data, typeSpecs, namespace, name, schema);
-        this.dataSet = (DataSet<Row>) data;
+        this.dataSet = (DataSet<Object[]>) data;
     }
 
     public FlinkDDF(DDFManager manager, DDFManager defaultManagerIfNull) throws DDFException {
@@ -25,12 +24,8 @@ public class FlinkDDF extends DDF {
         super(manager);
     }
 
-
-    public DataSet<Row> getDataSet() {
+    public DataSet<Object[]> getDataSet() {
         return this.dataSet;
     }
 
-    public DataSet<java.lang.Object[]> getDataSetOfObjects() throws DDFException {
-        return (DataSet<Object[]>) this.getRepresentationHandler().get(DataSet.class, Object[].class);
-    }
 }
