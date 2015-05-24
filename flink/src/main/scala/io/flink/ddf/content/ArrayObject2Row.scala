@@ -6,36 +6,14 @@ import java.util.Date
 import io.ddf.DDF
 import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.content.{ConvertFunction, Representation}
-import org.apache.flink.api.common.typeinfo.BasicTypeInfo
 import org.apache.flink.api.java.typeutils.ObjectArrayTypeInfo
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.table.Row
-import org.apache.flink.api.table.expressions.{Expression, ResolvedFieldReference}
-import org.apache.flink.api.table.typeinfo.RowTypeInfo
 
 import scala.collection.JavaConversions._
 import scala.util.{Failure, Success, Try}
 
 class ArrayObject2Row(@transient ddf: DDF) extends ConvertFunction(ddf) {
-
-  private def getRowTypeInfo(columns: Seq[Column]): RowTypeInfo = {
-    val fields: Seq[Expression] = columns.map {
-      col =>
-        val fieldType = col.getType match {
-          case ColumnType.STRING => BasicTypeInfo.STRING_TYPE_INFO
-          case ColumnType.INT => BasicTypeInfo.INT_TYPE_INFO
-          case ColumnType.LONG => BasicTypeInfo.LONG_TYPE_INFO
-          case ColumnType.FLOAT => BasicTypeInfo.FLOAT_TYPE_INFO
-          case ColumnType.DOUBLE => BasicTypeInfo.DOUBLE_TYPE_INFO
-          case ColumnType.BIGINT => BasicTypeInfo.DOUBLE_TYPE_INFO
-          case ColumnType.TIMESTAMP => BasicTypeInfo.DATE_TYPE_INFO
-          case ColumnType.LOGICAL => BasicTypeInfo.BOOLEAN_TYPE_INFO
-        }
-        ResolvedFieldReference(col.getName, fieldType)
-    }
-    new RowTypeInfo(fields)
-  }
-
 
   //TODO check what to set as defaults for different types - setting null throws error when serializing for the map job
   private def getFieldValue(elem: Object, isNumeric: Boolean): String = {
@@ -85,7 +63,7 @@ class ArrayObject2Row(@transient ddf: DDF) extends ConvertFunction(ddf) {
           case x: ObjectArrayTypeInfo[Array[Object], _] =>
             val columns: List[Column] = ddf.getSchema.getColumns.toList
             val idxColumns: Seq[(Column, Int)] = columns.zipWithIndex.toSeq
-            implicit val rowTypeInfo = getRowTypeInfo(columns)
+            implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo(columns)
             val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns))
             new Representation(rowDataSet, RepresentationHandler.DATASET_ROW.getTypeSpecsString)
         }

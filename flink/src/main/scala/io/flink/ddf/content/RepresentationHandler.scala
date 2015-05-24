@@ -9,8 +9,12 @@ import org.apache.flink.api.table.{Table, Row}
 class RepresentationHandler(ddf: DDF) extends RH(ddf) {
   override def getDefaultDataType: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
 
+  //In the current implementation of ArrayObject2Row, NA,null and invalid field values are translated to default values.
+  //Use DataSet[Array[Object]] if this information is required.
   this.addConvertFunction(DATASET_ARR_OBJECT, DATASET_ROW, new ArrayObject2Row(this.ddf))
   this.addConvertFunction(DATASET_ROW, TABLE, new DataSetRow2Table(this.ddf))
+  this.addConvertFunction(DATASET_ROW, DATASET_ARR_OBJECT, new DataSetRow2ArrayObject(this.ddf))
+  this.addConvertFunction(TABLE, DATASET_ROW, new Table2DataSetRow(this.ddf))
 }
 
 object RepresentationHandler {
