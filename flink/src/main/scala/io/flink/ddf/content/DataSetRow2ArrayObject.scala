@@ -5,6 +5,7 @@ import io.ddf.content.{ConvertFunction, Representation}
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.table.Row
 import org.apache.flink.api.table.typeinfo.RowTypeInfo
+import org.apache.flink.api.scala._
 
 import scala.collection.JavaConversions._
 
