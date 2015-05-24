@@ -1,6 +1,6 @@
 package io.flink.ddf.analytics
 
-import io.ddf.DDF
+import io.ddf.{DDFManager, DDF}
 import io.ddf.content.Schema.ColumnClass
 import io.flink.ddf.etl.SqlHandlerSpec
 import org.apache.flink.api.scala.DataSet
@@ -9,12 +9,13 @@ import scala.collection.JavaConverters._
 
 class BinningHandlerSpec extends SqlHandlerSpec with Matchers {
   it should "bin the ddf" in {
-    val ddf: DDF = loadDDF
-    val newddf: DDF = ddf.binning("dayofweek", "EQUALINTERVAL", 2, null, true, true)
+    val manager = DDFManager.get("flink")
+    val ddf: DDF = loadDDF(manager)
+    val newDDF: DDF = ddf.binning("dayofweek", "EQUALINTERVAL", 2, null, true, true)
 
-    newddf.getSchemaHandler.getColumn("dayofweek").getColumnClass should be(ColumnClass.FACTOR)
+    newDDF.getSchemaHandler.getColumn("dayofweek").getColumnClass should be(ColumnClass.FACTOR)
 
-    newddf.getSchemaHandler.getColumn("dayofweek").getOptionalFactor.getLevelMap.size should be(2)
+    newDDF.getSchemaHandler.getColumn("dayofweek").getOptionalFactor.getLevelMap.size should be(2)
 
     val ddf1: DDF = ddf.binning("month", "custom", 0, Array[Double](2, 4, 6, 8), true, true)
 

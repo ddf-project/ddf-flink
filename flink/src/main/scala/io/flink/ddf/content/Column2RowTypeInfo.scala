@@ -1,11 +1,12 @@
 package io.flink.ddf.content
 
-import io.ddf.content.Schema.{ColumnType, Column}
+import io.ddf.content.Schema.{Column, ColumnType}
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo
-import org.apache.flink.api.table.expressions.{ResolvedFieldReference, Expression}
+import org.apache.flink.api.table.expressions.{Expression, ResolvedFieldReference}
 import org.apache.flink.api.table.typeinfo.RowTypeInfo
+import org.apache.flink.api.scala._
 
-object Column2RowTypeInfo extends Serializable{
+object Column2RowTypeInfo extends Serializable {
   def getRowTypeInfo(columns: Seq[Column]): RowTypeInfo = {
     val fields: Seq[Expression] = columns.map {
       col =>
@@ -23,4 +24,23 @@ object Column2RowTypeInfo extends Serializable{
     }
     new RowTypeInfo(fields)
   }
+
+  def getColumns(rowTypeInfo: RowTypeInfo): Seq[Column] = {
+    rowTypeInfo.fieldNames.map {
+      col =>
+        val fieldType = rowTypeInfo.getTypeAt(col).getTypeClass
+        val colType = fieldType match {
+          case BasicTypeInfo.STRING_TYPE_INFO => ColumnType.STRING
+          case BasicTypeInfo.INT_TYPE_INFO => ColumnType.INT
+          case BasicTypeInfo.LONG_TYPE_INFO => ColumnType.LONG
+          case BasicTypeInfo.FLOAT_TYPE_INFO => ColumnType.FLOAT
+          case BasicTypeInfo.DOUBLE_TYPE_INFO => ColumnType.DOUBLE
+          case BasicTypeInfo.DOUBLE_TYPE_INFO => ColumnType.BIGINT
+          case BasicTypeInfo.DATE_TYPE_INFO => ColumnType.TIMESTAMP
+          case BasicTypeInfo.BOOLEAN_TYPE_INFO => ColumnType.LOGICAL
+        }
+        new Column(col, colType)
+    }
+  }
 }
+

@@ -5,7 +5,8 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class SqlHandlerSpec extends FlatSpec with Matchers {
   it should "create table and load data from file" in {
-    val ddf: DDF = loadDDF
+    val manager = DDFManager.get("flink")
+    val ddf: DDF = loadDDF(manager)
     ddf.getColumnNames should have size (29)
 
     //MetaDataHandler
@@ -20,12 +21,21 @@ class SqlHandlerSpec extends FlatSpec with Matchers {
     randomSummary.variance() >= 998284
   }
 
-  def loadDDF: DDF = {
-    val manager = DDFManager.get("flink")
+  def loadDDF(manager:DDFManager): DDF = {
+
     manager.sql2txt("create table airline (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )")
     val filePath = getClass.getResource("/airline.csv").getPath
     manager.sql2txt("load '" + filePath + "' into airline")
     val ddf = manager.getDDF("airline")
     ddf
   }
+
+  def loadDDF2(manager:DDFManager): DDF = {
+    manager.sql2txt("create table year_names (Year_num int,Name string)")
+    val filePath = getClass.getResource("/year_names.csv").getPath
+    manager.sql2txt("load '" + filePath + "' into year_names")
+    val ddf = manager.getDDF("year_names")
+    ddf
+  }
+
 }

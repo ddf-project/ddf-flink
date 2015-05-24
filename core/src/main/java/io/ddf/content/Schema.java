@@ -368,6 +368,21 @@ public class Schema implements Serializable {
       return clonedColumn;
     }
 
+    @Override
+    public boolean equals(Object obj) {
+      if(obj instanceof Column){
+        Column other = (Column) obj;
+        boolean match = getName().equalsIgnoreCase(other.getName()) && getType().equals(other.getType());
+        boolean ofMatches = mOptionalFactor!=null?mOptionalFactor.equals(other.mOptionalFactor):other.mOptionalFactor==null;
+        return match&&ofMatches;
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode() {
+      return getName().hashCode();
+    }
   }
 
 
