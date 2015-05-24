@@ -1,0 +1,31 @@
+package io.flink.ddf.etl
+
+import io.ddf.{DDF, DDFManager}
+import org.scalatest.{FlatSpec, Matchers}
+
+class SqlHandlerSpec extends FlatSpec with Matchers {
+  it should "create table and load data from file" in {
+    val ddf: DDF = loadDDF
+    ddf.getColumnNames should have size (29)
+
+    //MetaDataHandler
+    ddf.getNumRows should be(31)
+
+    //StatisticsComputer
+    val summaries = ddf.getSummary
+    summaries.head.max() should be(2010)
+
+    //mean:1084.26 stdev:999.14 var:998284.8 cNA:0 count:31 min:4.0 max:3920.0
+    val randomSummary = summaries(9)
+    randomSummary.variance() >= 998284
+  }
+
+  def loadDDF: DDF = {
+    val manager = DDFManager.get("flink")
+    manager.sql2txt("create table airline (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )")
+    val filePath = getClass.getResource("/airline.csv").getPath
+    manager.sql2txt("load '" + filePath + "' into airline")
+    val ddf = manager.getDDF("airline")
+    ddf
+  }
+}

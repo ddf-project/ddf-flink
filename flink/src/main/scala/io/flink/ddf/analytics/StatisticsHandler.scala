@@ -68,23 +68,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     }
   }
 
-  private def getDoubleColumn(columnName: String): Option[DataSet[Double]] = {
-    val schema = ddf.getSchema
-    val column: Column = schema.getColumn(columnName)
-    column.isNumeric match {
-      case true =>
-        val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
-        val colIndex = ddf.getSchema.getColumnIndex(columnName)
-        val colData = data.map {
-          x =>
-            val elem = x(colIndex)
-            val mayBeDouble = Try(elem.toString.trim.toDouble)
-            mayBeDouble.getOrElse(0.0)
-        }
-        Option(colData)
-      case false => Option.empty[DataSet[Double]]
-    }
-  }
+  private def getDoubleColumn(columnName: String): Option[DataSet[Double]] = Misc.getDoubleColumn(ddf,columnName)
 
   override protected def getSummaryImpl: Array[Summary] = {
     val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]

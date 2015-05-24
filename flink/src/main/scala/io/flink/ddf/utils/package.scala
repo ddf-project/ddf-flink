@@ -4,6 +4,8 @@ import java.util
 
 import com.clearspring.analytics.stream.quantile.QDigest
 import io.ddf.DDF
+import io.ddf.content.Schema
+import io.ddf.content.Schema.{ColumnType, Column}
 import org.apache.flink.api.common.accumulators.Histogram
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -11,8 +13,9 @@ import org.apache.flink.api.java.io.DiscardingOutputFormat
 import org.apache.flink.api.scala.{ExecutionEnvironment, DataSet}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.util.{AbstractID, Collector}
-
+import org.apache.flink.api.scala.{DataSet, _}
 import scala.reflect.ClassTag
+import scala.util.Try
 
 package object utils {
 
@@ -54,8 +57,84 @@ package object utils {
       Array(qDigest)
     }
 
+   def getDoubleColumn(ddf:DDF,columnName: String): Option[DataSet[Double]] = {
+      val schema = ddf.getSchema
+      val column: Column = schema.getColumn(columnName)
+      column.isNumeric match {
+        case true =>
+          val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
+          val colIndex = ddf.getSchema.getColumnIndex(columnName)
+          val colData = data.map {
+            x =>
+              val elem = x(colIndex)
+              val mayBeDouble = Try(elem.toString.trim.toDouble)
+              mayBeDouble.getOrElse(0.0)
+          }
+          Option(colData)
+        case false => Option.empty[DataSet[Double]]
+      }
+    }
 
+    def getBinned(ddf:DDF,b:Array[Double],col: String, intervals: Array[String], includeLowest: Boolean, right: Boolean): DDF = {
+      val schema = ddf.getSchema
+      val column = schema.getColumn(col)
+      val colIndex = schema.getColumnIndex(col)
+      val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
+
+
+      def getInterval(value: Double,b:Array[Double]): String = {
+        var interval: String = null
+        //case lowest
+        if (value >= b(0) && value <= b(1)) {
+          if (right) {
+            if (includeLowest) if (value >= b(0) && value <= b(1)) interval = intervals(0)
+            else
+            if (value > b(0) && value <= b(1)) interval = intervals(0)
+          }
+          else {
+            if (value >= b(0) && value < b(1)) interval = intervals(0)
+          }
+        } else if (b(b.length - 2) >= value && value <= b(b.length - 1)) {
+          //case highest
+          if (right) {
+            if (value > b(b.length - 2) && value <= b(b.length - 1)) interval = intervals(intervals.length - 1)
+          }
+          else {
+            if (includeLowest) if (value >= b(b.length - 2) && value <= b(b.length - 1)) interval = intervals(intervals.length - 1)
+            else
+            if (value >= b(b.length - 2) && value < b(b.length - 1)) interval = intervals(intervals.length - 1)
+          }
+        } else {
+          //case intermediate breaks
+          (1 to b.length - 3).foreach { i =>
+            if (right)
+              if (value > b(i) && value <= b(i + 1)) interval = intervals(i)
+              else
+              if (value >= b(i) && value < b(i + 1)) interval = intervals(i)
+          }
+        }
+        interval
+      }
+
+      val binned = data.map { row =>
+        val elem = row(colIndex)
+        val mayBeDouble = Try(elem.toString.trim.toDouble)
+        val value = mayBeDouble.getOrElse(0.0)
+        row(colIndex) = getInterval(value,b)
+        row
+      }
+
+      val cols = schema.getColumns
+      cols.set(colIndex, new Column(column.getName, ColumnType.STRING))
+      val newTableName = ddf.getSchemaHandler.newTableName()
+      val newSchema = new Schema(newTableName, cols)
+      ddf.getManager().newDDF(binned, Array(classOf[DataSet[_]], classOf[Array[Object]]), null, newTableName, newSchema)
+    }
   }
 
+  abstract class Function
+
+  case class Create(tableName: String, columns: List[(String, String)]) extends Function
+  case class Load(tableName: String, url:String) extends Function
 
 }
