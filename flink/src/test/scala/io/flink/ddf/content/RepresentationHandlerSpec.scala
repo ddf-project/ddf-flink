@@ -8,15 +8,13 @@ import org.apache.flink.api.scala.table._
 import org.apache.flink.api.table.{Row, _}
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.collection.JavaConversions._
-
 class RepresentationHandlerSpec extends FlatSpec with Matchers {
 
   val flinkDDFManager = DDFManager.get("flink").asInstanceOf[FlinkDDFManager]
   val ddf = flinkDDFManager.loadTable(getClass.getResource("/airline.csv").getPath, ",")
   val handler: IHandleRepresentations = ddf.getRepresentationHandler
 
- /* it should "have default datatype as DataSet[Array[Object]]" in {
+  it should "have default datatype as DataSet[Array[Object]]" in {
     handler.getDefaultDataType should be (Array(classOf[DataSet[_]],classOf[Array[Object]]))
   }
 
@@ -30,7 +28,7 @@ class RepresentationHandlerSpec extends FlatSpec with Matchers {
     val rowDataSet = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Row]).asInstanceOf[DataSet[Row]]
     val rows: Seq[Row] = rowDataSet.first(1).collect()
     rows.head.productElement(0) should be (2008)
-  }*/
+  }
 
   it should "get Table" in {
     val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
