@@ -73,7 +73,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     val column: Column = schema.getColumn(columnName)
     column.isNumeric match {
       case true =>
-        val data: DataSet[Array[Object]] = ddf.asInstanceOf[io.flink.ddf.FlinkDDF].getDataSet
+        val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
         val colIndex = ddf.getSchema.getColumnIndex(columnName)
         val colData = data.map {
           x =>
@@ -87,7 +87,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   override protected def getSummaryImpl: Array[Summary] = {
-    val data: DataSet[Array[Object]] = ddf.asInstanceOf[io.flink.ddf.FlinkDDF].getDataSet
+    val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
     val colSize = ddf.getColumnNames.size()
 
     val colData: GroupedDataSet[(Int, String)] = data.flatMap { row =>

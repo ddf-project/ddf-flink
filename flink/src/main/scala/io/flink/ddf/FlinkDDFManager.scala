@@ -7,7 +7,6 @@ import io.ddf.content.Schema.Column
 import io.ddf.{DDF, DDFManager}
 import io.flink.ddf.utils.Utils
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
-import org.apache.flink.api.table.Row
 import org.slf4j.LoggerFactory
 
 class FlinkDDFManager extends DDFManager {
@@ -26,7 +25,7 @@ class FlinkDDFManager extends DDFManager {
     val subset = fileData.first(5).map(_.map(_.toString)).collect()
     val columns: Array[Column] = getColumnInfo(subset)
 
-    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
+    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
     val namespace: String = "FlinkDDF"
     val rand: SecureRandom = new SecureRandom
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
