@@ -86,20 +86,34 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
   override def aggregateOnColumn(function: AggregateFunction, col: String): Double = {
     val methodName = getMethodName(function)
     val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
-    val row: Row = table.select(s"$col.$methodName").first(1).collect().head
+    val row: Row = table.select(s"${col.trim}.$methodName").first(1).collect().head
     row.productElement(0).toString.toDouble
   }
 
-  override def agg(aggregateFunctions: util.List[String]): DDF = {
-    val fns: Seq[AggregateField] = aggregateFunctions.map(AggregateField.fromFieldSpec)
+  private def stringToAggregateField(aggrFn: String): AggregateField = {
+    val terms = aggrFn.split("=")
+    if (terms.length > 1) {
+      AggregateField.fromFieldSpec(terms(1).trim).setName(terms(0).trim)
+    } else {
+      AggregateField.fromFieldSpec(terms(0).trim)
+    }
+  }
+
+  private def aggrFieldToSchemaColumn(fields: Seq[AggregateField]): Seq[Column] = {
     val schema = ddf.getSchema
+    val columns = fields.map {
+      case x if x.isAggregated =>
+        new Column(x.getAggregateFunction.toString(x.getColumn), ColumnType.DOUBLE)
+      case other =>
+        schema.getColumn(other.getColumn)
+    }
+    columns
+  }
+
+  override def agg(aggregateFunctions: util.List[String]): DDF = {
+    val fns: Seq[AggregateField] = aggregateFunctions.map(stringToAggregateField)
     aggregateInternal(fns, (table: Table, colSize: Int, numUnaggregatedFields: Int) => {
-      val columns = fns.map {
-        case x if x.isAggregated =>
-          new Column(x.getAggregateFunction.toString(x.getColumn), ColumnType.DOUBLE)
-        case other =>
-          schema.getColumn(other.getColumn)
-      }
+      val columns = aggrFieldToSchemaColumn(fns)
       table2DDF(table, columns)
     })
   }
@@ -108,10 +122,17 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     aggregate(fields)
   }
 
-  override def computeCorrelation(columnA: String, columnB: String): Double = ???
-
-  override def groupBy(groupedColumns: util.List[String], aggregateFunctions: util.List[String]): DDF = ???
+  override def groupBy(groupedColumns: util.List[String], aggregateFunctions: util.List[String]): DDF = {
+    val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
+    val aggregateFields: util.List[AggregateField] = aggregateFunctions.map(stringToAggregateField)
+    val fields: Seq[String] = getFields(aggregateFields)
+    val selectedColumns: Seq[String] = (fields ++ groupedColumns).distinct
+    val groupedData = table.groupBy(groupedColumns.map(_.trim).mkString(",")).select(selectedColumns.mkString(","))
+    val columns = aggrFieldToSchemaColumn(aggregateFields)
+    val groupedSchemaColumns = groupedColumns.map(ddf.getSchema.getColumn)
+    table2DDF(groupedData, (columns ++ groupedSchemaColumns).distinct)
+  }
 
   override def groupBy(groupedColumns: util.List[String]): DDF = ???
-
+  override def computeCorrelation(columnA: String, columnB: String): Double = ???
 }

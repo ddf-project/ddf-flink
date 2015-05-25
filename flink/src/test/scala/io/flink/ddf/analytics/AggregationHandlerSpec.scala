@@ -21,10 +21,17 @@ class AggregationHandlerSpec extends FlatSpec with Matchers {
     val colAggregate = ddf.getAggregationHandler.aggregateOnColumn(AggregateFunction.MAX, "V1")
     colAggregate should be(2010)
 
-    val ddf2 = ddf.getAggregationHandler.agg(List("avg(V15)"))
+    val ddf2 = ddf.getAggregationHandler.agg(List("mean=avg(V15)"))
     val rowDataSet = ddf2.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Row]).asInstanceOf[DataSet[Row]]
     val row: Row = rowDataSet.first(1).collect().head
-    row.productElement(0) should be (9)
+    row.productElement(0) should be(9)
   }
 
+  it should "group data" in {
+    val l1: java.util.List[String] = List("V3")
+    val l2: java.util.List[String] = List("mean(V16)")
+
+    val avgDelayByDay = ddf.groupBy(l1, l2)
+    avgDelayByDay.getColumnNames should (contain("AVG(V16)") and contain("V3"))
+  }
 }
