@@ -21,5 +21,7 @@ class FlinkDDFManagerSpec extends FlatSpec with Matchers {
     //mean:1084.26 stdev:999.14 var:998284.8 cNA:0 count:31 min:4.0 max:3920.0
     val randomSummary = summaries(9)
     randomSummary.variance() >= 998284
+    ddf.getUri should be("ddf://"+ddf.getNamespace+"/" + ddf.getName)
+    flinkDDFManager.getDDF("ddf://"+ddf.getNamespace+"/" + ddf.getName) should be(ddf)
   }
 }

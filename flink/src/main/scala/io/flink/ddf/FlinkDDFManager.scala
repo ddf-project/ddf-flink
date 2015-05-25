@@ -33,6 +33,7 @@ class FlinkDDFManager extends DDFManager {
     val schema: Schema = new Schema(tableName, columns)
 
     val ddf = this.newDDF(fileData, typeSpecs, namespace, tableName, schema)
+    this.addDDF(ddf)
     ddf
   }
 
