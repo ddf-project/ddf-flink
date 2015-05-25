@@ -34,4 +34,9 @@ class AggregationHandlerSpec extends FlatSpec with Matchers {
     val avgDelayByDay = ddf.groupBy(l1, l2)
     avgDelayByDay.getColumnNames should (contain("AVG(V16)") and contain("V3"))
   }
+
+  it should "calculate correlation" in {
+    //0.8977184691827954
+    ddf.correlation("V15", "V16") should be >= (0.89)
+  }
 }

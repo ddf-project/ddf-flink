@@ -10,9 +10,36 @@ import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.misc.ADDFFunctionalGroupHandler
 import io.ddf.types.AggregateTypes.{AggregateField, AggregateFunction, AggregationResult}
 import org.apache.flink.api.scala.table._
+import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.{Row, Table}
 
 import scala.collection.JavaConversions._
+
+case class PearsonCorrelation(x: Double,
+                              y: Double,
+                              xy: Double,
+                              x2: Double,
+                              y2: Double,
+                              count: Int) extends Serializable {
+
+  def merge(other: PearsonCorrelation): PearsonCorrelation = {
+    PearsonCorrelation(x + other.x,
+      y + other.y,
+      xy + other.xy,
+      x2 + other.x2,
+      y2 + other.y2,
+      count + count
+    )
+  }
+
+  def evaluate: Double = {
+    val numr: Double = (count * xy) - (x * y)
+    val base: Double = ((count * x2) - (x * x)) * ((count * y2) - (y * y))
+    val denr: Double = Math.sqrt(base)
+    val result: Double = numr / denr
+    result
+  }
+}
 
 class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandleAggregation {
 
@@ -110,14 +137,6 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     columns
   }
 
-  override def agg(aggregateFunctions: util.List[String]): DDF = {
-    val fns: Seq[AggregateField] = aggregateFunctions.map(stringToAggregateField)
-    aggregateInternal(fns, (table: Table, colSize: Int, numUnaggregatedFields: Int) => {
-      val columns = aggrFieldToSchemaColumn(fns)
-      table2DDF(table, columns)
-    })
-  }
-
   override def xtabs(fields: util.List[AggregateField]): AggregationResult = {
     aggregate(fields)
   }
@@ -133,6 +152,24 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     table2DDF(groupedData, (columns ++ groupedSchemaColumns).distinct)
   }
 
+  override def computeCorrelation(columnA: String, columnB: String): Double = {
+    val rowDataSet = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Row]).asInstanceOf[DataSet[Row]]
+    val colAIndex = ddf.getColumnIndex(columnA)
+    val colBIndex = ddf.getColumnIndex(columnB)
+
+    val intermediateResult = rowDataSet.map { row =>
+      val colAElement = row.productElement(colAIndex).toString.toDouble
+      val colBElement = row.productElement(colBIndex).toString.toDouble
+      new PearsonCorrelation(colAElement, colBElement,
+        colAElement * colBElement, colAElement * colAElement,
+        colBElement * colBElement, 1)
+    }.reduce(_.merge(_)).collect()
+
+    val correlation = intermediateResult.reduce(_.merge(_)).evaluate
+    correlation
+  }
+
   override def groupBy(groupedColumns: util.List[String]): DDF = ???
-  override def computeCorrelation(columnA: String, columnB: String): Double = ???
+
+  override def agg(aggregateFunctions: util.List[String]): DDF = ???
 }
