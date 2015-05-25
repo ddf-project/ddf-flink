@@ -5,8 +5,9 @@ import java.io.File
 import io.ddf.content.APersistenceHandler.PersistenceUri
 import io.ddf.misc.Config.ConfigConstant
 import io.ddf.{DDF, DDFManager}
-import junit.framework.Assert
 import org.scalatest.{FlatSpec, Matchers}
+
+import scala.collection.JavaConversions._
 
 class FlinkDDFManagerSpec extends FlatSpec with Matchers {
 
@@ -26,16 +27,8 @@ class FlinkDDFManagerSpec extends FlatSpec with Matchers {
     //mean:1084.26 stdev:999.14 var:998284.8 cNA:0 count:31 min:4.0 max:3920.0
     val randomSummary = summaries(9)
     randomSummary.variance() >= 998284
-    ddf.getUri should be("ddf://"+ddf.getNamespace+"/" + ddf.getName)
-    flinkDDFManager.getDDF("ddf://"+ddf.getNamespace+"/" + ddf.getName) should be(ddf)
+    ddf.getUri should be("ddf://" + ddf.getNamespace + "/" + ddf.getName)
+    flinkDDFManager.getDDF("ddf://" + ddf.getNamespace + "/" + ddf.getName) should be(ddf)
   }
 
-  it should "persist and unpersist a flink DDF" in {
-    val manager: DDFManager = DDFManager.get("flink")
-    val ddf: DDF = manager.newDDF
-    val uri: PersistenceUri = ddf.persist
-    uri.getEngine should be(ConfigConstant.ENGINE_NAME_FLINK.toString)
-    new File(uri.getPath).exists should be(true)
-    ddf.unpersist
-  }
 }
