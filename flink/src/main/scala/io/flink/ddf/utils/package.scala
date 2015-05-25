@@ -10,8 +10,7 @@ import org.apache.flink.api.common.accumulators.Histogram
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.DiscardingOutputFormat
-import org.apache.flink.api.scala.{ExecutionEnvironment, DataSet}
-import org.apache.flink.api.table.expressions.Expression
+import org.apache.flink.api.scala.{ExecutionEnvironment}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.util.{AbstractID, Collector}
 import org.apache.flink.api.scala.{DataSet, _}
@@ -133,23 +132,6 @@ package object utils {
     }
   }
 
-  abstract class Function
-
-  case class Create(tableName: String, columns: List[(String, String)]) extends Function
-  case class Load(tableName: String, url:String) extends Function
-  case class Select(project: Project,from:From,where: Option[Where],group: Option[Group],join: Option[Join]) extends Function
-  case class Project(expression: Expression*)
-  case class From(str: String*)
-  case class Where(expression: Expression)
-  case class Group(expression: Expression*)
-  case class Join(expression: Expression)
-
-  class BinaryExpr(expression:Expression,and:Boolean){
-    def expr = expression
-    def isAnd = and
-  }
-  case class AndExpr(expression:Expression) extends BinaryExpr(expression,true)
-  case class OrExpr(expression:Expression) extends BinaryExpr(expression,false)
 
 
 }

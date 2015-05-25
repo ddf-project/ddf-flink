@@ -6,6 +6,8 @@ import org.apache.flink.api.scala.table._
 import org.apache.flink.api.table._
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.collection.JavaConverters._
+
 class SqlHandlerSpec extends FlatSpec with Matchers {
   it should "create table and load data from file" in {
     val manager = DDFManager.get("flink")
@@ -24,14 +26,31 @@ class SqlHandlerSpec extends FlatSpec with Matchers {
     randomSummary.variance() >= 998284
   }
 
-  it should "run a sql commnad" in {
+  it should "run a simple sql command" in {
     val manager = DDFManager.get("flink")
     val ddf: DDF = loadDDF(manager)
     val ddf1 = ddf.sql2ddf("select Year,Month from airline")
     val table = ddf1.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
-    val collection:Seq[Row] = table.toSet[Row].collect()
-    collection.foreach(i => println(i.toString()))
+    val collection: Seq[Row] = table.toSet[Row].collect()
+    val list = collection.asJava
+    println(list)
+    list.get(0).productArity should be(2)
+    list.get(0).productElement(0).toString should startWith ("200")
   }
+
+  it should "run a sql command with where" in {
+    val manager = DDFManager.get("flink")
+    val ddf: DDF = loadDDF(manager)
+    val ddf1 = ddf.sql2ddf("select Year,Month from airline where Year > 2008 AND Month > 1")
+    val table = ddf1.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
+    val collection: Seq[Row] = table.toSet[Row].collect()
+    val list = collection.asJava
+    println(list)
+    list.size should  be (1)
+    list.get(0).productArity should be(2)
+    list.get(0).productElement(0) should be(2010)
+  }
+
 
   def loadDDF(manager: DDFManager): DDF = {
 

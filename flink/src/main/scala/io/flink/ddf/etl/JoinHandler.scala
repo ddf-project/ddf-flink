@@ -29,9 +29,8 @@ class JoinHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandle
       }
     }
     catch {
-      case ex: Exception => {
+      case ex: Exception =>
         throw new DDFException(String.format("Error while joinType.getStringRepr()"), ex)
-      }
     }
     val leftSchema = getDDF.getSchema
     val rightSchema = anotherDDF.getSchema
