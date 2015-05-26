@@ -1,13 +1,18 @@
 package io.flink.ddf.analytics
 
-import io.ddf.DDFManager
 import io.ddf.analytics.AStatisticsSupporter
-import org.scalatest.{FlatSpec, Matchers}
+import io.flink.ddf.BaseSpec
 
-class StatisticsHandlerSpec extends FlatSpec with Matchers {
+class StatisticsHandlerSpec extends BaseSpec{
 
-  val flinkDDFManager = DDFManager.get("flink")
-  val ddf = flinkDDFManager.loadTable(getClass.getResource("/airline.csv").getPath, ",")
+  it should "calculate summary" in {
+    val summaries = ddf.getSummary
+    summaries.head.max() should be(2010)
+
+    //mean:1084.26 stdev:999.14 var:998284.8 cNA:0 count:31 min:4.0 max:3920.0
+    val randomSummary = summaries(9)
+    randomSummary.variance() should be (998284.8 +- 1.0)
+  }
 
   it should "calculate vector mean" in {
     ddf.getVectorMean("V1") should not be null

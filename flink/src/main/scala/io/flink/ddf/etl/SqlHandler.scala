@@ -8,8 +8,8 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, DataFormat}
 import io.ddf.etl.ASqlHandler
 import io.flink.ddf.FlinkDDFManager
+import io.flink.ddf.content.Column2RowTypeInfo
 import io.flink.ddf.content.SqlSupport._
-import io.flink.ddf.content.{Column2RowTypeInfo, SchemaHandler}
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.typeinfo.{RenamingProxyTypeInfo, RowTypeInfo}
@@ -19,9 +19,13 @@ import scala.collection.JavaConversions._
 
 
 class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
+
+  val parser = new TableDdlParser
+
+  def parse(input: String): Function = parser.parse(input)
+
   override def sql2ddf(command: String): DDF = {
-    val schemaHandler: SchemaHandler = this.getDDF.getSchemaHandler.asInstanceOf[SchemaHandler]
-    val fn = schemaHandler.parse(command)
+    val fn = parse(command)
     fn match {
       case c: Create =>
         val ddf = create2ddf(c)
@@ -95,8 +99,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   override def sql2ddf(command: String, schema: Schema, dataSource: String, dataFormat: DataFormat): DDF = sql2ddf(command)
 
   override def sql2txt(command: String): util.List[String] = {
-    val schemaHandler: SchemaHandler = this.getDDF.getSchemaHandler.asInstanceOf[SchemaHandler]
-    val fn = schemaHandler.parse(command)
+    val fn = parse(command)
     fn match {
       case c: Create =>
         val ddf = create2ddf(c)
