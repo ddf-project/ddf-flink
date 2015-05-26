@@ -2,15 +2,15 @@ package io.flink.ddf.analytics
 
 import io.ddf.{DDFManager, DDF}
 import io.ddf.content.Schema.ColumnClass
+import io.flink.ddf.BaseSpec
 import io.flink.ddf.etl.SqlHandlerSpec
 import org.apache.flink.api.scala.DataSet
 import org.scalatest.Matchers
 import scala.collection.JavaConverters._
 
-class BinningHandlerSpec extends SqlHandlerSpec with Matchers {
+class BinningHandlerSpec extends BaseSpec with Matchers {
   it should "bin the ddf" in {
-    val manager = DDFManager.get("flink")
-    val ddf: DDF = loadDDF(manager)
+    val ddf: DDF = loadAirlineDDF()
     val newDDF: DDF = ddf.binning("dayofweek", "EQUALINTERVAL", 2, null, true, true)
 
     newDDF.getSchemaHandler.getColumn("dayofweek").getColumnClass should be(ColumnClass.FACTOR)

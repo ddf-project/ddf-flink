@@ -19,4 +19,12 @@ class SchemaHandlerSpec extends BaseSpec {
     columns.head.getName should be("V1")
   }
 
+  it should "get columns for sql2ddf create table" in {
+    val ddf = loadAirlineDDF()
+    val columns = ddf.getSchema.getColumns
+    columns should not be null
+    columns.length should be(29)
+    columns.head.getName should be("Year")
+  }
+
 }

@@ -11,6 +11,7 @@ import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.DiscardingOutputFormat
 import org.apache.flink.api.scala.{ExecutionEnvironment}
+import org.apache.flink.api.table.Row
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.util.{AbstractID, Collector}
 import org.apache.flink.api.scala.{DataSet, _}
@@ -131,6 +132,35 @@ package object utils {
       ddf.getManager().newDDF(binned, Array(classOf[DataSet[_]], classOf[Array[Object]]), null, newTableName, newSchema)
     }
   }
+
+  object Joins {
+
+    def merge(row1: Row, row2: Row, joinedColNames:Seq[Schema.Column], leftSchema:Schema,rightSchema:Schema) = {
+      val row: Row = new Row(joinedColNames.size)
+      val r1 = if(row1 == null) new Row(leftSchema.getNumColumns) else row1
+      val r2 = if(row2 == null) new Row(rightSchema.getNumColumns) else row2
+      var i = 0
+      joinedColNames.foreach { colName =>
+        val colIdx = leftSchema.getColumnIndex(colName.getName)
+        if (colIdx > -1) {
+          val obj = r1.productElement(colIdx)
+          row.setField(i, obj)
+        }
+        else {
+          val colIdx = rightSchema.getColumnIndex(colName.getName)
+          val obj = r2.productElement(colIdx)
+          row.setField(i, obj)
+        }
+        i = i + 1
+      }
+      row
+    }
+
+    def mergeIterator(iter: Iterator[(Row, Row)], joinedColNames:Seq[Schema.Column], leftSchema:Schema,rightSchema:Schema): Iterator[Row] = {
+     if(iter!=null) iter.map { case (r1, r2) => merge(r1, r2,joinedColNames,leftSchema,rightSchema)} else List[Row]().iterator
+    }
+  }
+
 
 
 
