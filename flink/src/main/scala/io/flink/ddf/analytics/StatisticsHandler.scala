@@ -9,10 +9,13 @@ import io.ddf.analytics.AStatisticsSupporter.{FiveNumSummary, HistogramBin}
 import io.ddf.analytics.{AStatisticsSupporter, Summary}
 import io.ddf.content.Schema.Column
 import io.flink.ddf.FlinkDDFManager
-import io.flink.ddf.utils.Misc
-import org.apache.flink.api.common.functions.GroupReduceFunction
+import io.flink.ddf.utils.{HistogramForDouble, Misc}
+import org.apache.flink.api.common.accumulators.{Histogram, Accumulator}
+import org.apache.flink.api.common.functions.{RichFlatMapFunction, GroupReduceFunction}
 import org.apache.flink.api.scala.{DataSet, _}
-import org.apache.flink.util.Collector
+import org.apache.flink.api.table.Row
+import org.apache.flink.configuration.Configuration
+import org.apache.flink.util.{AbstractID, Collector}
 
 import scala.collection.JavaConversions._
 import scala.util.{Failure, Success, Try}
@@ -125,11 +128,17 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     }
   }
 
-  //TODO
-  override def getVectorCor(xColumnName: String, yColumnName: String): Double = 0
+  override def getVectorCor(xColumnName: String, yColumnName: String): Double = {
+    ddf.getAggregationHandler.computeCorrelation(xColumnName,yColumnName)
+  }
 
-  //TODO
-  override def getVectorCovariance(xColumnName: String, yColumnName: String): Double = 0
+  override def getVectorCovariance(xColumnName: String, yColumnName: String): Double = {
+    val manager = this.getManager.asInstanceOf[FlinkDDFManager]
+    val dataSet: DataSet[Row] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Row]).asInstanceOf[DataSet[Row]]
+    val xIndex = ddf.getSchema.getColumnIndex(xColumnName)
+    val yIndex = ddf.getSchema.getColumnIndex(yColumnName)
+    Misc.collectCovariance(manager.getExecutionEnvironment,dataSet,xIndex,yIndex)
+  }
 
   override def getVectorHistogram(columnName: String, numBins: Int): util.List[HistogramBin] = {
     val columnData = getDoubleColumn(columnName).get

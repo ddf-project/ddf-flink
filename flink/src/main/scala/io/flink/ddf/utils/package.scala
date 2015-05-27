@@ -5,22 +5,107 @@ import java.util
 import com.clearspring.analytics.stream.quantile.QDigest
 import io.ddf.DDF
 import io.ddf.content.Schema
-import io.ddf.content.Schema.{ColumnType, Column}
-import org.apache.flink.api.common.accumulators.Histogram
+import io.ddf.content.Schema.{Column, ColumnType}
+import org.apache.flink.api.common.accumulators.{Accumulator, Histogram}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.DiscardingOutputFormat
-import org.apache.flink.api.scala.{ExecutionEnvironment}
+import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
 import org.apache.flink.api.table.Row
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.util.{AbstractID, Collector}
-import org.apache.flink.api.scala.{DataSet, _}
+
 import scala.reflect.ClassTag
 import scala.util.Try
 
 package object utils {
 
   object Misc extends Serializable {
+
+
+    class CovarianceCounter extends Accumulator[(Double, Double), java.lang.Double] {
+
+
+      var xAvg = 0.0
+      var yAvg = 0.0
+      var Ck = 0.0
+      var count = 0L
+
+      // add an example to the calculation
+      def add(x: Double, y: Double): this.type = {
+        val oldX = xAvg
+        count += 1
+        xAvg += (x - xAvg) / count
+        yAvg += (y - yAvg) / count
+        Ck += (y - yAvg) * (x - oldX)
+        this
+      }
+
+      // merge counters from other partitions. Formula can be found at:
+      // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Covariance
+      override def merge(acc: Accumulator[(Double,Double), java.lang.Double])= {
+        val other = acc.asInstanceOf[CovarianceCounter]
+        val totalCount = count + other.count
+        Ck += other.Ck +
+          (xAvg - other.xAvg) * (yAvg - other.yAvg) * count / totalCount * other.count
+        xAvg = (xAvg * count + other.xAvg * other.count) / totalCount
+        yAvg = (yAvg * count + other.yAvg * other.count) / totalCount
+        count = totalCount
+      }
+
+      // return the sample covariance for the observed examples
+      def cov: Double = Ck / (count - 1)
+
+
+      override def getLocalValue: java.lang.Double = cov
+
+      override def resetLocal(): Unit = {
+        xAvg = 0.0
+        yAvg = 0.0
+        Ck = 0.0
+        count = 0L
+      }
+
+      override def add(v: (Double, Double)): Unit = add(v._1,v._2)
+    }
+
+
+    class CovarianceHelper(id: String, xIndex: Int, yIndex: Int) extends RichFlatMapFunction[Row, CovarianceCounter] {
+      private var accumulator: CovarianceCounter = null
+
+      @throws(classOf[Exception])
+      override def open(parameters: Configuration) {
+        this.accumulator = new CovarianceCounter()
+        trait Ser[M]
+        implicit def toSer1[T <: AnyVal]: Ser[T] = new Ser[T] {}
+        implicit def toSer2[T <: java.io.Serializable]: Ser[T] = new Ser[T] {}
+        getRuntimeContext.addAccumulator(id, accumulator)
+      }
+
+      override def flatMap(in: Row, collector: Collector[CovarianceCounter]): Unit = {
+        this.accumulator.add(asDouble(in.productElement(xIndex)), asDouble(in.productElement(yIndex)))
+      }
+
+
+      def asDouble(elem: Any) = {
+        val mayBeDouble = Try(elem.toString.trim.toDouble)
+        mayBeDouble.getOrElse(0.0)
+      }
+    }
+
+
+    /**
+     * Convenience method to get the elements of a DataSet of Doubles as a Histogram
+     *
+     * @return A List containing the elements of the DataSet
+     */
+    def collectCovariance[T: ClassTag](env: ExecutionEnvironment, dataSet: DataSet[Row], xIndex: Int, yIndex: Int)(implicit typeInformation: TypeInformation[CovarianceCounter]): Double = {
+      val id: String = new AbstractID().toString
+      dataSet.flatMap(new CovarianceHelper(id, xIndex, yIndex)).output(new DiscardingOutputFormat)
+      val res = env.execute()
+      res.getAccumulatorResult(id)
+    }
+
     /**
      * Convenience method to get the elements of a DataSet of Doubles as a Histogram
      *
@@ -54,16 +139,16 @@ package object utils {
 
     def qDigest(iterator: Iterator[Double]) = {
       val qDigest = new QDigest(100)
-      iterator.foreach(i=> qDigest.offer(i.toLong))
+      iterator.foreach(i => qDigest.offer(i.toLong))
       Array(qDigest)
     }
 
-   def getDoubleColumn(ddf:DDF,columnName: String): Option[DataSet[Double]] = {
+    def getDoubleColumn(ddf: DDF, columnName: String): Option[DataSet[Double]] = {
       val schema = ddf.getSchema
       val column: Column = schema.getColumn(columnName)
       column.isNumeric match {
         case true =>
-          val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
+          val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
           val colIndex = ddf.getSchema.getColumnIndex(columnName)
           val colData = data.map {
             x =>
@@ -76,14 +161,14 @@ package object utils {
       }
     }
 
-    def getBinned(ddf:DDF,b:Array[Double],col: String, intervals: Array[String], includeLowest: Boolean, right: Boolean): DDF = {
+    def getBinned(ddf: DDF, b: Array[Double], col: String, intervals: Array[String], includeLowest: Boolean, right: Boolean): DDF = {
       val schema = ddf.getSchema
       val column = schema.getColumn(col)
       val colIndex = schema.getColumnIndex(col)
       val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
 
 
-      def getInterval(value: Double,b:Array[Double]): String = {
+      def getInterval(value: Double, b: Array[Double]): String = {
         var interval: String = null
         //case lowest
         if (value >= b(0) && value <= b(1)) {
@@ -121,7 +206,7 @@ package object utils {
         val elem = row(colIndex)
         val mayBeDouble = Try(elem.toString.trim.toDouble)
         val value = mayBeDouble.getOrElse(0.0)
-        row(colIndex) = getInterval(value,b)
+        row(colIndex) = getInterval(value, b)
         row
       }
 
@@ -135,10 +220,10 @@ package object utils {
 
   object Joins {
 
-    def merge(row1: Row, row2: Row, joinedColNames:Seq[Schema.Column], leftSchema:Schema,rightSchema:Schema) = {
+    def merge(row1: Row, row2: Row, joinedColNames: Seq[Schema.Column], leftSchema: Schema, rightSchema: Schema) = {
       val row: Row = new Row(joinedColNames.size)
-      val r1 = if(row1 == null) new Row(leftSchema.getNumColumns) else row1
-      val r2 = if(row2 == null) new Row(rightSchema.getNumColumns) else row2
+      val r1 = if (row1 == null) new Row(leftSchema.getNumColumns) else row1
+      val r2 = if (row2 == null) new Row(rightSchema.getNumColumns) else row2
       var i = 0
       joinedColNames.foreach { colName =>
         val colIdx = leftSchema.getColumnIndex(colName.getName)
@@ -156,12 +241,10 @@ package object utils {
       row
     }
 
-    def mergeIterator(iter: Iterator[(Row, Row)], joinedColNames:Seq[Schema.Column], leftSchema:Schema,rightSchema:Schema): Iterator[Row] = {
-     if(iter!=null) iter.map { case (r1, r2) => merge(r1, r2,joinedColNames,leftSchema,rightSchema)} else List[Row]().iterator
+    def mergeIterator(iter: Iterator[(Row, Row)], joinedColNames: Seq[Schema.Column], leftSchema: Schema, rightSchema: Schema): Iterator[Row] = {
+      if (iter != null) iter.map { case (r1, r2) => merge(r1, r2, joinedColNames, leftSchema, rightSchema)} else List[Row]().iterator
     }
   }
-
-
 
 
 }
