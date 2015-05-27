@@ -7,10 +7,12 @@ import io.ddf.DDF
 import io.ddf.analytics.IHandleAggregation
 import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
+import io.ddf.exception.DDFException
 import io.ddf.misc.ADDFFunctionalGroupHandler
 import io.ddf.types.AggregateTypes.{AggregateField, AggregateFunction, AggregationResult}
+import org.apache.flink.api.scala.DataSet
+import org.apache.flink.api.scala._
 import org.apache.flink.api.scala.table._
-import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.{Row, Table}
 
 import scala.collection.JavaConversions._
@@ -42,6 +44,14 @@ case class PearsonCorrelation(x: Double,
 }
 
 class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandleAggregation {
+
+  private var groupColumns: util.List[String] = List.empty[String]
+
+  private def setGroups(groupedColumns: util.List[String]) = {
+    groupColumns = groupedColumns
+  }
+
+  def getGroupColumns = groupColumns
 
   private def getMethodName(aggrFunction: AggregateFunction): String = {
     aggrFunction match {
@@ -169,7 +179,29 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     correlation
   }
 
-  override def groupBy(groupedColumns: util.List[String]): DDF = ???
+  override def groupBy(groupedColumns: util.List[String]): DDF = {
+    val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
+    val ddfCopy = table2DDF(table, ddf.getSchema.getColumns)
+    val aggregationHandler = new AggregationHandler(ddfCopy)
+    aggregationHandler.setGroups(groupedColumns)
+    ddfCopy.setAggregationHandler(aggregationHandler)
+    ddf.getManager.addDDF(ddfCopy)
+    ddfCopy
+  }
 
-  override def agg(aggregateFunctions: util.List[String]): DDF = ???
+  //this method can only be called on a ddf whose AggregationHandler has groupColumns
+  override def agg(aggregateFunctions: util.List[String]): DDF = {
+    val handler = ddf.getAggregationHandler.asInstanceOf[AggregationHandler]
+    val groupColumns = handler.getGroupColumns
+    if (groupColumns.nonEmpty) {
+      val resultDDF = groupBy(groupColumns, aggregateFunctions)
+      val aggregationHandler = new AggregationHandler(resultDDF)
+      resultDDF.setAggregationHandler(aggregationHandler)
+      ddf.getManager.addDDF(resultDDF)
+      resultDDF
+    } else {
+      throw new DDFException("Need to set grouped columns before aggregation")
+    }
+  }
+
 }
