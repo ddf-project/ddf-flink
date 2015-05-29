@@ -1,5 +1,8 @@
 package io.spark.ddf.etl
 
+import org.apache.spark.sql.DataFrame
+
+import scala.collection.JavaConverters._
 import scala.collection.JavaConversions.asScalaIterator
 import scala.collection.JavaConversions.seqAsJavaList
 
@@ -14,15 +17,48 @@ import org.rosuda.REngine.REXPLogical
 import org.rosuda.REngine.REXPString
 import org.rosuda.REngine.RList
 import org.rosuda.REngine.Rserve.RConnection
+import org.rosuda.REngine.Rserve.StartRserve
 
 import io.ddf.DDF
 import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.etl.{TransformationHandler ⇒ CoreTransformationHandler}
 import io.ddf.exception.DDFException
-import io.spark.ddf.SparkDDF
+import io.spark.ddf.util.SparkUtils
+import java.util.{ArrayList, List}
 
 class TransformationHandler(mDDF: DDF) extends CoreTransformationHandler(mDDF) {
+
+
+  override def flattenDDF(selectedColumns: Array[String]): DDF = {
+    val df: DataFrame = mDDF.getRepresentationHandler.get(classOf[DataFrame]).asInstanceOf[DataFrame]
+    val flattenedColumns: Array[String] = SparkUtils.flattenColumnNamesFromDataFrame(df, selectedColumns)
+
+    val selectColumns:Array[String] = new Array[String](flattenedColumns.length)
+    // update hive-invalid column names
+
+    for(i <- 0 until flattenedColumns.length) {
+      selectColumns(i) = flattenedColumns(i).replaceAll("[.]", "_")
+      if(selectColumns(i).charAt(0) == '_') {
+        selectColumns(i) = selectColumns(i).substring(1)
+      }
+      selectColumns(i) = s"${flattenedColumns(i)} as ${selectColumns(i)}"
+    }
+
+    val selectClause = selectColumns.mkString(",")
+    //val q = String.format("select %s from %s", selectClause, mDDF.getTableName)
+    val q = s"select $selectClause from ${mDDF.getTableName}"
+
+    //println("Query: \n" + q)
+
+    val result = mDDF.sql2ddf(q)
+    //println("Resulted DDF's columns: " + result.getColumnNames)
+    result
+  }
+
+  override def flattenDDF(): DDF = {
+    flattenDDF(null)
+  }
 
   override def transformMapReduceNative(mapFuncDef: String, reduceFuncDef: String, mapsideCombine: Boolean = true): DDF = {
 
@@ -84,7 +120,6 @@ class TransformationHandler(mDDF: DDF) extends CoreTransformationHandler(mDDF) {
 
     val manager = this.getManager
     val ddf = manager.newDDF(manager, rReduced, Array(classOf[RDD[_]], classOf[REXP]), manager.getNamespace, null, newSchema)
-    manager.addDDF(ddf)
     ddf
   }
 
@@ -96,6 +131,8 @@ class TransformationHandler(mDDF: DDF) extends CoreTransformationHandler(mDDF) {
     val rMapped = dfrdd.map {
       partdf ⇒
         try {
+          // check if Rserve is running, if not: start it
+          if(!StartRserve.checkLocalRserve()) throw new RuntimeException("Unable to start Rserve")
           // one connection for each compute job
           val rconn = new RConnection()
 
@@ -105,7 +142,7 @@ class TransformationHandler(mDDF: DDF) extends CoreTransformationHandler(mDDF) {
 
           val expr = String.format("%s <- transform(%s, %s)", dfvarname, dfvarname, transformExpression)
 
-          //        mLog.info(">>>>>>>>>>>>.expr=" + expr.toString())
+          // mLog.info(">>>>>>>>>>>>.expr=" + expr.toString())
 
           // compute!
           TransformationHandler.tryEval(rconn, expr, errMsgHeader = "failed to eval transform expression")
@@ -134,7 +171,7 @@ class TransformationHandler(mDDF: DDF) extends CoreTransformationHandler(mDDF) {
     val manager = this.getManager
     val ddf = manager.newDDF(manager, rMapped, Array(classOf[RDD[_]], classOf[REXP]), manager.getNamespace, null, newSchema)
     mLog.info(">>>>> adding ddf to manager: " + ddf.getName)
-    manager.addDDF(ddf)
+    ddf.getMetaDataHandler.copyFactor(this.getDDF)
     ddf
   }
 
@@ -180,6 +217,8 @@ object TransformationHandler {
    * Perform map and mapsideCombine phase
    */
   def preShuffleMapper(partdf: REXP, mapFuncDef: String, reduceFuncDef: String, mapsideCombine: Boolean): REXP = {
+    // check if Rserve is running, if not: start it
+    if(!StartRserve.checkLocalRserve()) throw new RuntimeException("Unable to start Rserve")
     // one connection for each compute job
     val rconn = new RConnection()
 
@@ -325,6 +364,8 @@ object TransformationHandler {
    * then assemble each resulting partition as a data.frame of REXP in Java
    */
   def postShufflePartitionMapper(input: Iterator[(String, Iterable[REXP])], reduceFuncDef: String): Iterator[REXP] = {
+    // check if Rserve is running, if not: start it
+    if(!StartRserve.checkLocalRserve()) throw new RuntimeException("Unable to start Rserve")
     val rconn = new RConnection()
 
     // pre-amble

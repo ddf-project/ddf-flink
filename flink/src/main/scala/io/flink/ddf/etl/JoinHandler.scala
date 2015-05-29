@@ -86,5 +86,8 @@ class JoinHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandle
 
   }
 
-
+  override def merge(anotherDDF: DDF): DDF = {
+    //TODO: Implement this method
+    ???
+  }
 }

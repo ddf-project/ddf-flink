@@ -33,7 +33,7 @@ object GetMultiFactor {
       case arrObj if arrObj == classOf[Array[Object]] => {
         val mapper = new ArraryObjectMultiFactorMapper(columnIndexesWithTypes)
         val rddArrObj = rdd.asInstanceOf[RDD[Array[Object]]]
-        rddArrObj.mapPartitions(mapper).reduce(new MultiFactorReducer)
+        rddArrObj.mapPartitions(mapper).fold(new java.util.HashMap[JInt, JMap[String, JInt]]())(new MultiFactorReducer)
       }
       case _ => {
         throw new DDFException("Cannot get multi factor for RDD[%s]".format(tag.toString))
@@ -91,10 +91,12 @@ object GetMultiFactor {
               case ColumnType.DOUBLE => Option(x.asInstanceOf[Double].toString)
               case ColumnType.STRING => Option(x.asInstanceOf[String])
               case ColumnType.FLOAT => Option(x.asInstanceOf[Float].toString)
+              case ColumnType.BIGINT | ColumnType.LONG => Option(x.asInstanceOf[Long].toString)
               case unknown => x match {
                 case y: java.lang.Integer => Option(y.toString)
                 case y: java.lang.Double => Option(y.toString)
                 case y: java.lang.String => Option(y)
+                case y: java.lang.Long => Option(y.toString)
               }
             }
             case None => None

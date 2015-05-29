@@ -1,10 +1,11 @@
 package io.flink.ddf.analytics
 
-import java.lang
+import java.{util, lang}
 import java.text.DecimalFormat
 
 import io.ddf.DDF
 import io.ddf.analytics.ABinningHandler.BinningType
+import io.ddf.analytics.AStatisticsSupporter.HistogramBin
 import io.ddf.analytics.{ABinningHandler, IHandleBinning}
 import io.ddf.exception.DDFException
 import io.flink.ddf.utils.Misc
@@ -152,5 +153,8 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning{
     }
   }
 
-
+  override def getVectorHistogramImpl(column: String, numBins: Int): util.List[HistogramBin] = {
+    //TODO: Implement this API
+    List.empty[HistogramBin].asJava
+  }
 }
