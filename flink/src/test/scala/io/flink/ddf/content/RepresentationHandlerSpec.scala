@@ -5,6 +5,7 @@ import io.flink.ddf.BaseSpec
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.table.{Row, _}
+import org.rosuda.REngine.REXP
 
 class RepresentationHandlerSpec extends BaseSpec {
 
@@ -31,6 +32,11 @@ class RepresentationHandlerSpec extends BaseSpec {
     val distinctYear = table.select("V1").distinct.collect()
     //years 2008,2009 and 2010
     distinctYear.length should be(3)
+  }
+
+  it should "get DataSet[REXP]" in {
+    val rEXPDataSet = handler.get(classOf[DataSet[_]], classOf[REXP]).asInstanceOf[DataSet[REXP]]
+    rEXPDataSet should not be null
   }
 
 }

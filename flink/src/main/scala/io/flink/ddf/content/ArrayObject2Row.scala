@@ -60,7 +60,7 @@ class ArrayObject2Row(@transient ddf: DDF) extends ConvertFunction(ddf) {
     repValue match {
       case dataSet: DataSet[_] =>
         dataSet.getType() match {
-          case x: ObjectArrayTypeInfo[Array[Object], _] =>
+          case x: ObjectArrayTypeInfo[_, _] =>
             val columns: List[Column] = ddf.getSchema.getColumns.toList
             val idxColumns: Seq[(Column, Int)] = columns.zipWithIndex.toSeq
             implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo(columns)

@@ -587,6 +587,7 @@ object RootBuild extends Build {
     testOptions in Test += Tests.Argument("-oI"),
     libraryDependencies ++= apache_flink_snapshots,
     libraryDependencies ++= flink_dependencies,
+    libraryDependencies ++= com_adatao_unmanaged,
     dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
     dependencyOverrides += "joda-time" % "joda-time" % "2.7",
     dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2"

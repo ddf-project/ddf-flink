@@ -8,7 +8,7 @@ import org.apache.flink.api.table.typeinfo.RowTypeInfo
 import org.apache.flink.api.scala._
 import scala.collection.JavaConversions._
 
-class DataSetRow2ArrayObject(@transient ddf: DDF) extends ConvertFunction(ddf) {
+class Row2ArrayObject(@transient ddf: DDF) extends ConvertFunction(ddf) {
   override def apply(rep: Representation): Representation = {
     rep.getValue match {
       case dataSet: DataSet[_] =>
