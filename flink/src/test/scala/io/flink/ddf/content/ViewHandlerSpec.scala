@@ -1,11 +1,13 @@
 package io.flink.ddf.content
 
 import io.ddf.DDF
-import io.ddf.content.ViewHandler
 import io.ddf.content.ViewHandler.{OperationName, Operator}
 import io.flink.ddf.BaseSpec
 
 class ViewHandlerSpec extends BaseSpec {
+  val airlineDDF = loadAirlineDDF()
+  val yearNamesDDF = loadYearNamesDDF()
+
   it should "project after remove columns " in {
     val ddf = airlineDDF
     val columns: java.util.List[String] = new java.util.ArrayList()

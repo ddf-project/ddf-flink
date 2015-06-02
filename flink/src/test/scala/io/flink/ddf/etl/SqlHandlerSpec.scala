@@ -10,7 +10,10 @@ import org.scalatest.Matchers
 
 import scala.collection.JavaConverters._
 
-class SqlHandlerSpec extends BaseSpec with Matchers {
+class SqlHandlerSpec extends BaseSpec {
+  val airlineDDF = loadAirlineDDF()
+  val yearNamesDDF = loadYearNamesDDF()
+
   it should "create table and load data from file" in {
     val ddf = airlineDDF
     ddf.getColumnNames should have size (29)

@@ -3,7 +3,7 @@ package io.flink.ddf
 import io.ddf.DDFManager
 import org.scalatest.{FlatSpec, Matchers}
 
-class FlinkDDFManagerSpec extends BaseSpec with Matchers {
+class FlinkDDFManagerSpec extends BaseSpec {
 
   it should "load data from file" in {
     ddf.getNamespace should be("FlinkDDF")

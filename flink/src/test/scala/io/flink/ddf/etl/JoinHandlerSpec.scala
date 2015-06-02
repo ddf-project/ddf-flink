@@ -11,6 +11,8 @@ import org.apache.flink.api.table.Row
 import scala.collection.JavaConversions._
 
 class JoinHandlerSpec extends BaseSpec {
+  val airlineDDF = loadAirlineDDF()
+  val yearNamesDDF = loadYearNamesDDF()
 
   it should "inner join tables" in {
     val ddf: DDF = airlineDDF

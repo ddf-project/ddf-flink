@@ -8,7 +8,7 @@ import org.scalatest.Matchers
 
 import scala.collection.JavaConverters._
 
-class BinningHandlerSpec extends BaseSpec with Matchers {
+class BinningHandlerSpec extends BaseSpec {
   it should "bin the ddf" in {
     val ddf = loadAirlineDDF()
     val newDDF: DDF = ddf.binning("dayofweek", "EQUALINTERVAL", 2, null, true, true)

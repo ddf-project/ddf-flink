@@ -6,8 +6,8 @@ import org.scalatest.{FlatSpec, Matchers}
 class BaseSpec extends FlatSpec with Matchers {
   val flinkDDFManager = DDFManager.get("flink").asInstanceOf[FlinkDDFManager]
   val ddf = flinkDDFManager.loadTable(getClass.getResource("/airline.csv").getPath, ",")
-  val airlineDDF = loadAirlineDDF()
-  val yearNamesDDF = loadYearNamesDDF()
+  //val airlineDDF = loadAirlineDDF()
+  //val yearNamesDDF = loadYearNamesDDF()
 
   def loadAirlineDDF(): DDF = {
     var ddf: DDF = null
