@@ -1,18 +1,18 @@
 package io.flink.ddf.etl
 
-import io.ddf.{DDF, DDFManager}
+import io.ddf.DDF
 import io.flink.ddf.BaseSpec
+import io.flink.ddf.content.RepresentationHandler
 import org.apache.flink.api.scala._
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.table._
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.Matchers
 
 import scala.collection.JavaConverters._
 
 class SqlHandlerSpec extends BaseSpec with Matchers {
   it should "create table and load data from file" in {
-    val manager = DDFManager.get("flink")
-    val ddf: DDF = loadAirlineDDF()
+    val ddf = airlineDDF
     ddf.getColumnNames should have size (29)
 
     //MetaDataHandler
@@ -28,30 +28,47 @@ class SqlHandlerSpec extends BaseSpec with Matchers {
   }
 
   it should "run a simple sql command" in {
-    val manager = DDFManager.get("flink")
-    val ddf: DDF = loadAirlineDDF()
+    val ddf = airlineDDF
     val ddf1 = ddf.sql2ddf("select Year,Month from airline")
     val table = ddf1.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
     val collection: Seq[Row] = table.toSet[Row].collect()
     val list = collection.asJava
     println(list)
     list.get(0).productArity should be(2)
-    list.get(0).productElement(0).toString should startWith ("200")
+    list.get(0).productElement(0).toString should startWith("200")
   }
 
   it should "run a sql command with where" in {
-    val manager = DDFManager.get("flink")
-    val ddf: DDF = loadAirlineDDF()
+    val ddf = airlineDDF
     val ddf1 = ddf.sql2ddf("select Year,Month from airline where Year > 2008 AND Month > 1")
     val table = ddf1.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
     val collection: Seq[Row] = table.toSet[Row].collect()
     val list = collection.asJava
     println(list)
-    list.size should  be (1)
+    list.size should be(1)
     list.get(0).productArity should be(2)
     list.get(0).productElement(0) should be(2010)
   }
 
+  it should "run a sql command with a join" in {
+    val ddf: DDF = airlineDDF
+    val ddf2: DDF = yearNamesDDF
+    val ddf3 = ddf.sql2ddf("select Year,Month from airline join year_names on (Year = Year_num) ")
+    val collection: Seq[Row] = ddf3.getRepresentationHandler.get(RepresentationHandler.TABLE_TYPE_SPECS:_*).asInstanceOf[Table].collect
+    println(collection.mkString("\n"))
+
+    val ddf4 = ddf.sql2ddf("select Year,Month from airline left join year_names on (Year = Year_num) ")
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+    println(collection2.mkString("\n"))
+
+  }
+
+  it should "run a sql command with a join and where" in {
+    val ddf4 = ddf.sql2ddf("select Year,Month from airline left join year_names on (Year = Year_num) where Year_num > 2008 ")
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+    println(collection2.mkString("\n"))
+
+  }
 
 
 }

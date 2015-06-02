@@ -590,7 +590,11 @@ object RootBuild extends Build {
     libraryDependencies ++= com_adatao_unmanaged,
     dependencyOverrides += "org.objenesis" % "objenesis" % "1.2",
     dependencyOverrides += "joda-time" % "joda-time" % "2.7",
-    dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2"
+    dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2",
+    dependencyOverrides ++= Set("com.fasterxml.jackson.core" % "jackson-core" % "2.1.1",
+      "com.fasterxml.jackson.core" % "jackson-databind" % "2.1.1",
+      "com.fasterxml.jackson.core" % "jackson-annotations" % "2.1.1")
+
   ) ++ assemblySettings ++ extraAssemblySettings
 
 

@@ -13,7 +13,7 @@ class FlinkDDFManagerSpec extends BaseSpec with Matchers {
 
   it should "be addressable via URI" in {
     ddf.getUri should be("ddf://" + ddf.getNamespace + "/" + ddf.getName)
-    flinkDDFManager.getDDF("ddf://" + ddf.getNamespace + "/" + ddf.getName) should be(ddf)
+    flinkDDFManager.getDDFByURI("ddf://" + ddf.getNamespace + "/" + ddf.getName) should be(ddf)
   }
 
 }
