@@ -1,7 +1,7 @@
 package io.flink.ddf.content
 
 import io.ddf.etl.Types.JoinType
-import io.flink.ddf.content.SqlSupport.TableDdlParser
+import io.flink.ddf.content.SqlSupport.{Select, TableDdlParser}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.table.expressions._
 import org.apache.flink.api.table.parser.ExpressionParser
@@ -15,8 +15,23 @@ object SqlSupport {
 
   case class Load(tableName: String, url: String) extends Function
 
-  case class Select(project: Projection, relations: Array[Relation], where: Option[Where], group: Option[Group], order: Option[Order], limit: Int) extends Function {
+  case class Select(project: Projection, relations: Array[Relation], where: Option[Where], group: Option[GroupBy], order: Option[OrderBy], limit: Int) extends Function {
     override def toString = "Select(" + project + ")From(" + relations.mkString(",") + ")Where(" + where + ")GroupBy(" + group + ")OrderBy(" + order + ")Limit(" + limit + ")"
+
+    def validate = {
+
+      if (!project.isStar) {
+        val expressions = project.asInstanceOf[ExprProjection].expressions
+        val exprMap = expressions.map(e => (e.name, e)).toMap
+        order.map { o =>
+          o.columns.foreach(os => if (!exprMap.contains(os._1)) throw new IllegalArgumentException("Projection does not contain order by column(" + os._1 + ")"))
+        }
+        group.map { g =>
+          g.expression.foreach(os => if (!exprMap.contains(os.name)) throw new IllegalArgumentException("Projection does not contain order by column(" + os.name + ")"))
+        }
+
+      }
+    }
   }
 
   case class Star() extends Expression {
@@ -55,9 +70,9 @@ object SqlSupport {
 
   case class Where(expression: Expression)
 
-  case class Group(expression: Expression*)
+  case class GroupBy(expression: Expression*)
 
-  case class Order(expression: Expression*)
+  case class OrderBy(columns: (String, Boolean)*)
 
   class BinaryExpr(expression: Expression, and: Boolean) {
     def expr = expression
@@ -84,7 +99,7 @@ object SqlSupport {
         (FROM ~> relations) ~
         (WHERE ~> predicate).? ~
         (GROUP ~> BY ~> expressionList).? ~
-        (ORDER ~> BY ~> expressionList).? ~
+        (ORDER ~> BY ~> orderColumns).? ~
         (LIMIT ~> wholeNumber).? ^^ {
         case p ~ t ~ w ~ g ~ o ~ l =>
           val iWhere = w map {
@@ -92,20 +107,20 @@ object SqlSupport {
             case _ => null
           }
           val iGroup = g map {
-            case e: List[Expression] => Group(e.toArray: _*)
+            case e: List[Expression] => GroupBy(e.toArray: _*)
             case _ => null
           }
           val iOrder = o map {
-            case e: List[Expression] => Order(e.toArray: _*)
+            case e: List[(String, Boolean)] => OrderBy(e: _*)
             case _ => null
           }
-          val limit = l.map(s=> s.toInt).getOrElse(-1)
+          val limit = l.map(s => s.toInt).getOrElse(-1)
 
           Select(p, t.toArray, iWhere, iGroup, iOrder, limit)
       }
 
     protected lazy val projection: ExpressionParser.PackratParser[Projection] =
-      "*" ^^ { s => StarProjection() } | repsep(function | expression, ",") ^^ { e => ExprProjection(e: _*) }
+      "*" ^^ { s => StarProjection() } | repsep(functionWithAlias | expression, ",") ^^ { e => ExprProjection(e: _*) }
 
 
     protected lazy val relations: ExpressionParser.PackratParser[List[Relation]] = repsep(relation, ",") ^^ {
@@ -144,6 +159,15 @@ object SqlSupport {
       List() ++ _
     }
 
+    protected lazy val orderColumns: ExpressionParser.PackratParser[List[(String, Boolean)]] = repsep(columnWithOrder, ",") ^^ {
+      List() ++ _
+    }
+
+    protected lazy val columnWithOrder: ExpressionParser.PackratParser[(String, Boolean)] =
+      ident ~ ASC ^^ { case s ~ a => (s, true) } |
+        ident ~ DESC ^^ { case s ~ d => (s, false) } |
+        ident ^^ { s => (s, true) }
+
     protected lazy val columnWithType: ExpressionParser.PackratParser[(String, String)] =
       ident ~ dataType ^^ { case col ~ dt => (col, dt) }
 
@@ -171,6 +195,12 @@ object SqlSupport {
     lazy val expression: ExpressionParser.PackratParser[Expression] = alias
 
     lazy val limit: ExpressionParser.PackratParser[Int] = LIMIT ~> ident ^^ (_.toInt)
+
+    lazy val functionWithAlias: Parser[Expression] = function ~ (AS ~> ident).? ^^ {
+      case f ~ a => a.map { s =>
+        Naming(f, s)
+      }.getOrElse(f)
+    }
 
     protected lazy val function: Parser[Expression] =
       (SUM ~> "(" ~> expression <~ ")" ^^ { case exp => Sum(exp) }
@@ -219,6 +249,9 @@ object SqlSupport {
     protected val JOIN = ExpressionParser.Keyword("JOIN")
     protected val GROUP = ExpressionParser.Keyword("GROUP")
     protected val ORDER = ExpressionParser.Keyword("ORDER")
+    protected val ASC = ExpressionParser.Keyword("ASC")
+    protected val DESC = ExpressionParser.Keyword("DESC")
+
     protected val LIMIT = ExpressionParser.Keyword("LIMIT")
     protected val BY = ExpressionParser.Keyword("BY")
     protected val ON = ExpressionParser.Keyword("ON")
@@ -302,14 +335,20 @@ object SqlSupportTest {
     val select3 = """SELECT a,b,c,d from e,f where a=2 OR (b=1 AND c=2)"""
     val select4 = """SELECT a,b,c,d from e ,f where a=2 AND d=1 OR (b=1 AND c=2) group by a"""
     val select5 = """SELECT a as a1,b,c,d from f join e on (a = c AND c =d) where b=1"""
-    val select6 = """SELECT * from e limit 100"""
+    val select6 = """SELECT * from e order by a,b DESC,c asc limit 100"""
+
+
     println(parser.parse(select))
     println(parser.parse(select1))
     println(parser.parse(select2))
     println(parser.parse(select3))
     println(parser.parse(select4))
     println(parser.parse(select5))
-    println(parser.parse(select6))
+    val s6: Select = parser.parse(select6).asInstanceOf[Select]
+    println(s6)
+    s6.validate
+    val select7 = """SELECT sum(a) as suma,b from e group by suma,b"""
+    println(parser.parse(select7))
   }
 
 }

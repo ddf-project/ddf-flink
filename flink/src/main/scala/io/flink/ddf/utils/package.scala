@@ -10,6 +10,7 @@ import io.ddf.etl.Types.JoinType
 import io.flink.ddf.content.RepresentationHandler
 import org.apache.flink.api.common.accumulators.{Accumulator, Histogram}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
+import org.apache.flink.api.common.operators.Order
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.DiscardingOutputFormat
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
@@ -46,7 +47,7 @@ package object utils {
 
       // merge counters from other partitions. Formula can be found at:
       // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Covariance
-      override def merge(acc: Accumulator[(Double,Double), java.lang.Double])= {
+      override def merge(acc: Accumulator[(Double, Double), java.lang.Double]) = {
         val other = acc.asInstanceOf[CovarianceCounter]
         val totalCount = count + other.count
         Ck += other.Ck +
@@ -69,7 +70,7 @@ package object utils {
         count = 0L
       }
 
-      override def add(v: (Double, Double)): Unit = add(v._1,v._2)
+      override def add(v: (Double, Double)): Unit = add(v._1, v._2)
     }
 
 
@@ -223,7 +224,7 @@ package object utils {
 
   object Joins {
 
-    def joinDataSets(joinType: JoinType, byColumns: util.List[String], byLeftColumns:util.List[String], byRightColumns:util.List[String], leftTable: DataSet[Row], rightTable: DataSet[Row], leftSchema: Schema, rightSchema: Schema): (Seq[Column], DataSet[Row]) = {
+    def joinDataSets(joinType: JoinType, byColumns: util.List[String], byLeftColumns: util.List[String], byRightColumns: util.List[String], leftTable: DataSet[Row], rightTable: DataSet[Row], leftSchema: Schema, rightSchema: Schema): (Seq[Column], DataSet[Row]) = {
       val joinCols = if (byColumns != null && byColumns.size > 0) collectionAsScalaIterable(byColumns).toArray else collectionAsScalaIterable(byLeftColumns).toArray
       val toCols = if (byColumns != null && byColumns.size > 0) collectionAsScalaIterable(byColumns).toArray else collectionAsScalaIterable(byRightColumns).toArray
       val leftCols = leftSchema.getColumns
@@ -281,15 +282,15 @@ package object utils {
           coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
       }
 
-      val objArrDS= joinedDataSet.map {
+      val objArrDS = joinedDataSet.map {
         r =>
-          val objArr: Array[Object] = (0 to joinedColNames.size -1).map { index =>
+          val objArr: Array[Object] = (0 to joinedColNames.size - 1).map { index =>
             r.productElement(index).asInstanceOf[Object]
           }.toArray
           objArr
       }
 
-      (joinedColNames, RepresentationHandler.getRowDataSet(objArrDS,joinedColNames.toList))
+      (joinedColNames, RepresentationHandler.getRowDataSet(objArrDS, joinedColNames.toList))
     }
 
 
@@ -315,9 +316,34 @@ package object utils {
     }
 
     def mergeIterator(iter: Iterator[(Row, Row)], joinedColNames: Seq[Schema.Column], leftSchema: Schema, rightSchema: Schema): Iterator[Row] = {
-      if (iter != null) iter.map { case (r1, r2) => merge(r1, r2, joinedColNames, leftSchema, rightSchema)} else List[Row]().iterator
+      if (iter != null) iter.map { case (r1, r2) => merge(r1, r2, joinedColNames, leftSchema, rightSchema) } else List[Row]().iterator
     }
   }
 
+
+  object Sorts {
+    def sort(ds: DataSet[Row], schema: Schema, orderFields: Seq[String], orderAsc: Array[Boolean]) = {
+      val orderFieldIndices: Seq[Int] = orderFields.map{ field=>
+        val idx = schema.getColumnIndex(field)
+        idx
+      }
+      ds.setParallelism(1)
+      var sorted = ds
+      var i = 0
+      orderFieldIndices.foreach { col =>
+        sorted = sorted.sortPartition(col, if (orderAsc(i)) Order.ASCENDING else Order.DESCENDING)
+        i = i + 1
+      }
+      val objArrDS = sorted.map {
+        r =>
+          val objArr: Array[Object] = (0 to schema.getColumnNames.size - 1).map { index =>
+            r.productElement(index).asInstanceOf[Object]
+          }.toArray
+          objArr
+      }
+      RepresentationHandler.getRowDataSet(objArrDS, schema.getColumns.toList)
+    }
+
+  }
 
 }

@@ -15,11 +15,6 @@ class ViewHandler(ddf: DDF) extends io.ddf.content.ViewHandler(ddf){
     null
   }
 
-  override def top(numRows: Int, orderCols: String, mode: String): util.List[String] = {
-    null
-  }
-
-
   override def getDDF: DDF = super.getDDF
 
   override def setDDF(theDDF: DDF): Unit = super.setDDF(theDDF)

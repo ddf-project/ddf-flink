@@ -70,5 +70,30 @@ class SqlHandlerSpec extends BaseSpec with Matchers {
 
   }
 
+  it should "run a sql command with an orderby" in {
+    val ddf4 = ddf.sql2ddf("select Year,Month from airline order by Year DESC")
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+    println(collection2.mkString("\n"))
+    val list = collection2.asJava
+    list.get(0).productArity should be(2)
+    list.get(0).productElement(0) should be(2010)
+  }
+
+  it should "run a sql command with an orderby and limit" in {
+    val ddf4 = ddf.sql2ddf("select Year,Month from airline order by Year DESC limit 2")
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+    println(collection2.mkString("\n"))
+    val list = collection2.asJava
+    list.size should be(2)
+    list.get(0).productArity should be(2)
+    list.get(0).productElement(0) should be(2010)
+  }
+
+  //  it should "run a sql command with a groupby and order by" in {
+//    val ddf4 = ddf.sql2ddf("select Year,Month,Count(Cancelled) from airline group by Count(Cancelled) order by Year DESC")
+//    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+//    println(collection2.mkString("\n"))
+//  }
+
 
 }

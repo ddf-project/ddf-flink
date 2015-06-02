@@ -10,7 +10,7 @@ import io.ddf.etl.ASqlHandler
 import io.flink.ddf.FlinkDDFManager
 import io.flink.ddf.content.Column2RowTypeInfo
 import io.flink.ddf.content.SqlSupport._
-import io.flink.ddf.utils.Joins
+import io.flink.ddf.utils.{Joins, Sorts}
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.typeinfo.{RenamingProxyTypeInfo, RowTypeInfo}
@@ -64,7 +64,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
 
   protected def select2ddf(s: Select) = {
-
+    s.validate
     val ddf = this.getManager.getDDFByName(s.relations.head.getTableName)
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
     val table: DataSet[Row] = ddf.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[DataSet[Row]]
@@ -74,7 +74,6 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     var joinedSchemaCols = ddf.getSchema.getColumns
 
     val joins = s.relations.filter(i => i.isInstanceOf[JoinRelation])
-
     if (s.project.isStar) {
       joined = joined.select(ddf.getSchema.getColumnNames.mkString(","))
     } else {
@@ -95,7 +94,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     }
     if (where != null) joined = joined.where(where.expression)
     if (group != null) joined = joined.groupBy(group.expression: _*)
-    if (s.limit > 0) joined = joined.first(s.limit)
+
     if (cols == null) {
       def typeInfo: RowTypeInfo = joined.getType() match {
         case r: RenamingProxyTypeInfo[Row] => r.getUnderlyingType.asInstanceOf[RowTypeInfo]
@@ -105,6 +104,14 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     }
     val tableName = ddf.getSchemaHandler.newTableName
     val schema = new Schema(tableName, cols)
+    joined = s.order.map { ord =>
+      val orderByFields = ord.columns.map(_._1)
+      val order: Array[Boolean] = ord.columns.map(_._2).toArray
+      Sorts.sort(joined, schema, orderByFields, order)
+    }.getOrElse(joined)
+
+    if (s.limit > 0) joined = joined.first(s.limit)
+
     val newDDF = this.getManager.newDDF(joined, dsrTypeSpecs, null, tableName, schema)
     newDDF
   }
