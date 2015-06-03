@@ -11,10 +11,12 @@ import org.apache.flink.api.table.Row
 import scala.collection.JavaConversions._
 
 class JoinHandlerSpec extends BaseSpec {
+  val airlineDDF = loadAirlineDDF()
+  val yearNamesDDF = loadYearNamesDDF()
 
   it should "inner join tables" in {
-    val ddf: DDF = loadAirlineDDF()
-    val ddf2: DDF = loadYearNamesDDF()
+    val ddf: DDF = airlineDDF
+    val ddf2: DDF = yearNamesDDF
     val joinedDDF = ddf.join(ddf2, null, null, Collections.singletonList("Year"), Collections.singletonList("Year_num"))
     val rep = joinedDDF.getRepresentationHandler.get(Array(classOf[DataSet[_]], classOf[Row]): _*).asInstanceOf[DataSet[Row]]
     val collection = rep.collect()
@@ -31,8 +33,8 @@ class JoinHandlerSpec extends BaseSpec {
   }
 
   it should "left semi join tables" in {
-    val ddf: DDF = loadAirlineDDF()
-    val ddf2: DDF = loadYearNamesDDF()
+    val ddf: DDF = airlineDDF
+    val ddf2: DDF = yearNamesDDF
     val joinedDDF = ddf.join(ddf2, JoinType.LEFTSEMI, null, Collections.singletonList("Year"), Collections.singletonList("Year_num"))
     val rep = joinedDDF.getRepresentationHandler.get(Array(classOf[DataSet[_]], classOf[Row]): _*).asInstanceOf[DataSet[Row]]
     val collection = rep.collect()
@@ -49,8 +51,8 @@ class JoinHandlerSpec extends BaseSpec {
   }
 
   it should "left outer join tables" in {
-    val ddf: DDF = loadAirlineDDF()
-    val ddf2: DDF = loadYearNamesDDF()
+    val ddf: DDF = airlineDDF
+    val ddf2: DDF = yearNamesDDF
     val joinedDDF = ddf.join(ddf2, JoinType.LEFT, null, Collections.singletonList("Year"), Collections.singletonList("Year_num"))
     val rep = joinedDDF.getRepresentationHandler.get(Array(classOf[DataSet[_]], classOf[Row]): _*).asInstanceOf[DataSet[Row]]
     val collection = rep.collect()
@@ -66,8 +68,8 @@ class JoinHandlerSpec extends BaseSpec {
   }
 
   it should "right outer join tables" in {
-    val ddf: DDF = loadAirlineDDF()
-    val ddf2: DDF = loadYearNamesDDF()
+    val ddf: DDF = airlineDDF
+    val ddf2: DDF = yearNamesDDF
     val joinedDDF = ddf.join(ddf2, JoinType.RIGHT, null, Collections.singletonList("Year"), Collections.singletonList("Year_num"))
     val rep = joinedDDF.getRepresentationHandler.get(Array(classOf[DataSet[_]], classOf[Row]): _*).asInstanceOf[DataSet[Row]]
     val collection = rep.collect()
@@ -83,8 +85,8 @@ class JoinHandlerSpec extends BaseSpec {
   }
 
   it should "full outer join tables" in {
-    val ddf: DDF = loadAirlineDDF()
-    val ddf2: DDF = loadYearNamesDDF()
+    val ddf: DDF = airlineDDF
+    val ddf2: DDF = yearNamesDDF
     val joinedDDF = ddf.join(ddf2, JoinType.FULL, null, Collections.singletonList("Year"), Collections.singletonList("Year_num"))
     val rep = joinedDDF.getRepresentationHandler.get(Array(classOf[DataSet[_]], classOf[Row]): _*).asInstanceOf[DataSet[Row]]
     val collection = rep.collect()

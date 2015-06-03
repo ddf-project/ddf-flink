@@ -3,6 +3,7 @@ package io.flink.ddf.content
 import io.ddf.DDF
 import io.ddf.content.{ConvertFunction, Representation}
 import org.apache.flink.api.common.typeutils.CompositeType
+import org.apache.flink.api.java.typeutils.GenericTypeInfo
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.table.{Table, Row}

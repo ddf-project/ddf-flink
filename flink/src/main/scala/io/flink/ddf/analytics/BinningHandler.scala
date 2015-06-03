@@ -1,7 +1,7 @@
 package io.flink.ddf.analytics
 
-import java.{util, lang}
 import java.text.DecimalFormat
+import java.{lang, util}
 
 import io.ddf.DDF
 import io.ddf.analytics.ABinningHandler.BinningType
@@ -9,11 +9,11 @@ import io.ddf.analytics.AStatisticsSupporter.HistogramBin
 import io.ddf.analytics.{ABinningHandler, IHandleBinning}
 import io.ddf.exception.DDFException
 import io.flink.ddf.utils.Misc
-import org.apache.flink.api.scala._
+
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
-class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning{
+class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning {
 
   override def binningImpl(column: String, binningTypeString: String, numBins: Int, inputBreaks: Array[Double], includeLowest: Boolean,
                            right: Boolean): DDF = {
@@ -40,7 +40,7 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning{
     }
     var intervals = createIntervals(breaks, includeLowest, right)
 
-    val newDDF = Misc.getBinned(ddf,breaks,column, intervals, includeLowest, right)
+    val newDDF = Misc.getBinned(ddf, breaks, column, intervals, includeLowest, right)
     //remove single quote in intervals
     intervals = intervals.map(x ⇒ x.replace("'", ""))
     newDDF.getSchemaHandler.setAsFactor(column).setLevels(intervals.toList.asJava)
@@ -67,7 +67,6 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning{
     mLog.info("interval labels = {}", intervals)
     intervals
   }
-
 
 
   def getIntervalsFromNumBins(colName: String, bins: Int): Array[Double] = {
@@ -154,7 +153,6 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning{
   }
 
   override def getVectorHistogramImpl(column: String, numBins: Int): util.List[HistogramBin] = {
-    //TODO: Implement this API
-    List.empty[HistogramBin].asJava
+    ddf.getStatisticsSupporter.getVectorHistogram(column, numBins)
   }
 }

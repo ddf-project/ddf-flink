@@ -108,7 +108,7 @@ public class ViewHandler extends ADDFFunctionalGroupHandler implements IHandleVi
 
     for (String columnName : columnNames) {
       for (Iterator<String> it = columns.iterator();it.hasNext();) {
-        if (it.next().equals(columnName)) {
+        if (it.next().equalsIgnoreCase(columnName)) {
           it.remove();
         }
       }

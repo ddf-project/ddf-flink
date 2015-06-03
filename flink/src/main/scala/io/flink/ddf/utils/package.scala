@@ -6,8 +6,11 @@ import com.clearspring.analytics.stream.quantile.QDigest
 import io.ddf.DDF
 import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
+import io.ddf.etl.Types.JoinType
+import io.flink.ddf.content.RepresentationHandler
 import org.apache.flink.api.common.accumulators.{Accumulator, Histogram}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
+import org.apache.flink.api.common.operators.Order
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.DiscardingOutputFormat
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
@@ -15,6 +18,7 @@ import org.apache.flink.api.table.Row
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.util.{AbstractID, Collector}
 
+import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 import scala.util.Try
 
@@ -43,7 +47,7 @@ package object utils {
 
       // merge counters from other partitions. Formula can be found at:
       // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Covariance
-      override def merge(acc: Accumulator[(Double,Double), java.lang.Double])= {
+      override def merge(acc: Accumulator[(Double, Double), java.lang.Double]) = {
         val other = acc.asInstanceOf[CovarianceCounter]
         val totalCount = count + other.count
         Ck += other.Ck +
@@ -66,7 +70,7 @@ package object utils {
         count = 0L
       }
 
-      override def add(v: (Double, Double)): Unit = add(v._1,v._2)
+      override def add(v: (Double, Double)): Unit = add(v._1, v._2)
     }
 
 
@@ -220,6 +224,76 @@ package object utils {
 
   object Joins {
 
+    def joinDataSets(joinType: JoinType, byColumns: util.List[String], byLeftColumns: util.List[String], byRightColumns: util.List[String], leftTable: DataSet[Row], rightTable: DataSet[Row], leftSchema: Schema, rightSchema: Schema): (Seq[Column], DataSet[Row]) = {
+      val joinCols = if (byColumns != null && byColumns.size > 0) collectionAsScalaIterable(byColumns).toArray else collectionAsScalaIterable(byLeftColumns).toArray
+      val toCols = if (byColumns != null && byColumns.size > 0) collectionAsScalaIterable(byColumns).toArray else collectionAsScalaIterable(byRightColumns).toArray
+      val leftCols = leftSchema.getColumns
+      val rightCols = rightSchema.getColumns
+
+      leftCols.foreach(i => rightCols.remove(leftCols))
+
+      val isSemi = joinType == JoinType.LEFTSEMI
+      val joinedColNames: Seq[Column] = if (isSemi) leftCols else leftCols.++(rightCols)
+
+      val toCoGroup = leftTable.coGroup(rightTable).where(joinCols.head, joinCols.tail: _*).equalTo(toCols.head, toCols.tail: _*)
+      val joinedDataSet: DataSet[Row] = joinType match {
+        case JoinType.LEFT =>
+          val coGroup = toCoGroup.apply { (leftTuples, rightTuples) =>
+            //left outer join will have all left tuples even if right do not have a match in the coGroup
+            if (rightTuples.isEmpty)
+              for (left <- leftTuples) yield (left, null)
+            else
+              for (left <- leftTuples; right <- rightTuples) yield (left, right)
+
+          }
+          coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
+
+        case JoinType.RIGHT =>
+          val coGroup = toCoGroup.apply { (leftTuples, rightTuples) =>
+            //right outer join will have all right tuples even if left do not have a match in the coGroup
+            if (leftTuples.isEmpty)
+              for (right <- rightTuples) yield (null, right)
+
+            else
+              for (left <- leftTuples; right <- rightTuples) yield (left, right)
+          }
+          coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
+
+        case JoinType.FULL =>
+          val coGroup = toCoGroup.apply { (leftTuples, rightTuples) =>
+            //full outer join will have all right/left tuples even if left/right do not have a match in the coGroup
+            if (rightTuples.isEmpty)
+              for (left <- leftTuples) yield (left, null)
+            else if (leftTuples.isEmpty)
+              for (right <- rightTuples) yield (null, right)
+            else
+              for (left <- leftTuples; right <- rightTuples) yield (left, right)
+          }
+          coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
+
+        case _ =>
+          val coGroup = toCoGroup.apply { (leftTuples, rightTuples) =>
+            //semi/inner join will only have tuples which have a match on both sides
+            if (leftTuples.hasNext && rightTuples.hasNext)
+              for (left <- leftTuples; right <- rightTuples) yield (left, right)
+            else
+              null
+          }
+          coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
+      }
+
+      val objArrDS = joinedDataSet.map {
+        r =>
+          val objArr: Array[Object] = (0 to joinedColNames.size - 1).map { index =>
+            r.productElement(index).asInstanceOf[Object]
+          }.toArray
+          objArr
+      }
+
+      (joinedColNames, RepresentationHandler.getRowDataSet(objArrDS, joinedColNames.toList))
+    }
+
+
     def merge(row1: Row, row2: Row, joinedColNames: Seq[Schema.Column], leftSchema: Schema, rightSchema: Schema) = {
       val row: Row = new Row(joinedColNames.size)
       val r1 = if (row1 == null) new Row(leftSchema.getNumColumns) else row1
@@ -242,9 +316,34 @@ package object utils {
     }
 
     def mergeIterator(iter: Iterator[(Row, Row)], joinedColNames: Seq[Schema.Column], leftSchema: Schema, rightSchema: Schema): Iterator[Row] = {
-      if (iter != null) iter.map { case (r1, r2) => merge(r1, r2, joinedColNames, leftSchema, rightSchema)} else List[Row]().iterator
+      if (iter != null) iter.map { case (r1, r2) => merge(r1, r2, joinedColNames, leftSchema, rightSchema) } else List[Row]().iterator
     }
   }
 
+
+  object Sorts {
+    def sort(ds: DataSet[Row], schema: Schema, orderFields: Seq[String], orderAsc: Array[Boolean]) = {
+      val orderFieldIndices: Seq[Int] = orderFields.map{ field=>
+        val idx = schema.getColumnIndex(field)
+        idx
+      }
+      ds.setParallelism(1)
+      var sorted = ds
+      var i = 0
+      orderFieldIndices.foreach { col =>
+        sorted = sorted.sortPartition(col, if (orderAsc(i)) Order.ASCENDING else Order.DESCENDING)
+        i = i + 1
+      }
+      val objArrDS = sorted.map {
+        r =>
+          val objArr: Array[Object] = (0 to schema.getColumnNames.size - 1).map { index =>
+            r.productElement(index).asInstanceOf[Object]
+          }.toArray
+          objArr
+      }
+      RepresentationHandler.getRowDataSet(objArrDS, schema.getColumns.toList)
+    }
+
+  }
 
 }

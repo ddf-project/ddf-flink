@@ -10,6 +10,7 @@ import io.ddf.etl.ASqlHandler
 import io.flink.ddf.FlinkDDFManager
 import io.flink.ddf.content.Column2RowTypeInfo
 import io.flink.ddf.content.SqlSupport._
+import io.flink.ddf.utils.{Joins, Sorts}
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.typeinfo.{RenamingProxyTypeInfo, RowTypeInfo}
@@ -44,7 +45,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   }
 
   protected def load2ddf(l: Load) = {
-    val ddf = this.getManager.getDDF(l.tableName)
+    val ddf = this.getManager.getDDFByName(l.tableName)
     val env = this.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
     val dataSet = env
       .readTextFile(l.url)
@@ -61,30 +62,57 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     ddf
   }
 
+
   protected def select2ddf(s: Select) = {
-    val ddf = this.getManager.getDDF(s.from.str.head)
-    val typeSpecs: Array[Class[_]] = Array(classOf[Table])
-    val table: Table = ddf.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[Table]
-    val join = s.join.orNull
+    s.validate
+    val ddf = this.getManager.getDDFByName(s.relations.head.getTableName)
+    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
+    val table: DataSet[Row] = ddf.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[DataSet[Row]]
     val where = s.where.orNull
     val group = s.group.orNull
     var joined = table
-    if (s.from.str.size > 1 && join != null) {
-      val ddf2 = this.getManager.getDDF(s.from.str.tail.head)
-      val table2: Table = ddf2.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[Table]
-      joined = table.join(table2).where(join.expression)
+    var joinedSchemaCols = ddf.getSchema.getColumns
+
+    val joins = s.relations.filter(i => i.isInstanceOf[JoinRelation])
+    if (s.project.isStar) {
+      joined = joined.select(ddf.getSchema.getColumnNames.mkString(","))
+    } else {
+      joined = joined.select(s.project.asInstanceOf[ExprProjection].expressions: _*)
     }
-    joined = joined.select(s.project.expression: _*)
+
+    var cols: List[Schema.Column] = null
+    joins.map { j =>
+      val join = j.asInstanceOf[JoinRelation]
+      val ddf2 = this.getManager.getDDFByName(join.withTableName)
+      val table2: DataSet[Row] = ddf2.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[DataSet[Row]]
+      val (newCols, newDS) = Joins.joinDataSets(join.joinType, null,
+        join.joinCondition.left, join.joinCondition.right,
+        table, table2,
+        ddf.getSchema, ddf2.getSchema)
+      cols = newCols.toList
+      joined = newDS
+    }
     if (where != null) joined = joined.where(where.expression)
     if (group != null) joined = joined.groupBy(group.expression: _*)
-    val dataSet = joined.toSet[Row]
-    val typeInfo: RowTypeInfo = dataSet.getType() match {
-      case r: RenamingProxyTypeInfo[Row] => r.getUnderlyingType.asInstanceOf[RowTypeInfo]
-      case t: RowTypeInfo => t
+
+    if (cols == null) {
+      def typeInfo: RowTypeInfo = joined.getType() match {
+        case r: RenamingProxyTypeInfo[Row] => r.getUnderlyingType.asInstanceOf[RowTypeInfo]
+        case t: RowTypeInfo => t
+      }
+      cols = Column2RowTypeInfo.getColumns(typeInfo).toList
     }
     val tableName = ddf.getSchemaHandler.newTableName
-    val schema = new Schema(tableName, Column2RowTypeInfo.getColumns(typeInfo))
-    val newDDF = this.getManager.newDDF(dataSet, dsrTypeSpecs, null, tableName, schema)
+    val schema = new Schema(tableName, cols)
+    joined = s.order.map { ord =>
+      val orderByFields = ord.columns.map(_._1)
+      val order: Array[Boolean] = ord.columns.map(_._2).toArray
+      Sorts.sort(joined, schema, orderByFields, order)
+    }.getOrElse(joined)
+
+    if (s.limit > 0) joined = joined.first(s.limit)
+
+    val newDDF = this.getManager.newDDF(joined, dsrTypeSpecs, null, tableName, schema)
     newDDF
   }
 

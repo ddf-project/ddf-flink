@@ -3,7 +3,7 @@ package io.flink.ddf
 import io.ddf.DDFManager
 import org.scalatest.{FlatSpec, Matchers}
 
-class FlinkDDFManagerSpec extends BaseSpec with Matchers {
+class FlinkDDFManagerSpec extends BaseSpec {
 
   it should "load data from file" in {
     ddf.getNamespace should be("FlinkDDF")
@@ -13,7 +13,7 @@ class FlinkDDFManagerSpec extends BaseSpec with Matchers {
 
   it should "be addressable via URI" in {
     ddf.getUri should be("ddf://" + ddf.getNamespace + "/" + ddf.getName)
-    flinkDDFManager.getDDF("ddf://" + ddf.getNamespace + "/" + ddf.getName) should be(ddf)
+    flinkDDFManager.getDDFByURI("ddf://" + ddf.getNamespace + "/" + ddf.getName) should be(ddf)
   }
 
 }
