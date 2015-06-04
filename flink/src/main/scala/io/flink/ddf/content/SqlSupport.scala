@@ -27,7 +27,7 @@ object SqlSupport {
           o.columns.foreach(os => if (!exprMap.contains(os._1)) throw new IllegalArgumentException("Projection does not contain order by column(" + os._1 + ")"))
         }
         group.map { g =>
-          g.expression.foreach(os => if (!exprMap.contains(os.name)) throw new IllegalArgumentException("Projection does not contain order by column(" + os.name + ")"))
+          g.expression.foreach(os => if (!expressions.contains(os)) throw new IllegalArgumentException("Projection does not contain order by column(" + os + ")"))
         }
 
       }
@@ -98,7 +98,7 @@ object SqlSupport {
       (SELECT ~> projection) ~
         (FROM ~> relations) ~
         (WHERE ~> predicate).? ~
-        (GROUP ~> BY ~> expressionList).? ~
+        (GROUP ~> BY ~> grouping).? ~
         (ORDER ~> BY ~> orderColumns).? ~
         (LIMIT ~> wholeNumber).? ^^ {
         case p ~ t ~ w ~ g ~ o ~ l =>
@@ -121,6 +121,9 @@ object SqlSupport {
 
     protected lazy val projection: ExpressionParser.PackratParser[Projection] =
       "*" ^^ { s => StarProjection() } | repsep(functionWithAlias | expression, ",") ^^ { e => ExprProjection(e: _*) }
+
+    protected lazy val grouping: ExpressionParser.PackratParser[List[Expression]] =
+      repsep(function | expression,",") ^^ { case  e => e }
 
 
     protected lazy val relations: ExpressionParser.PackratParser[List[Relation]] = repsep(relation, ",") ^^ {
@@ -349,6 +352,8 @@ object SqlSupportTest {
     s6.validate
     val select7 = """SELECT sum(a) as suma,b from e group by suma,b"""
     println(parser.parse(select7))
+    val select8 = """SELECT sum(a),b from e group by sum(a),b"""
+    println(parser.parse(select8))
   }
 
 }

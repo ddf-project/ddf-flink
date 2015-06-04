@@ -6,7 +6,6 @@ import io.flink.ddf.content.RepresentationHandler
 import org.apache.flink.api.scala._
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.table._
-import org.scalatest.Matchers
 
 import scala.collection.JavaConverters._
 
@@ -57,25 +56,25 @@ class SqlHandlerSpec extends BaseSpec {
     val ddf: DDF = airlineDDF
     val ddf2: DDF = yearNamesDDF
     val ddf3 = ddf.sql2ddf("select Year,Month from airline join year_names on (Year = Year_num) ")
-    val collection: Seq[Row] = ddf3.getRepresentationHandler.get(RepresentationHandler.TABLE_TYPE_SPECS:_*).asInstanceOf[Table].collect
+    val collection: Seq[Row] = ddf3.getRepresentationHandler.get(RepresentationHandler.TABLE_TYPE_SPECS: _*).asInstanceOf[Table].collect
     println(collection.mkString("\n"))
 
     val ddf4 = ddf.sql2ddf("select Year,Month from airline left join year_names on (Year = Year_num) ")
-    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
     println(collection2.mkString("\n"))
 
   }
 
   it should "run a sql command with a join and where" in {
     val ddf4 = ddf.sql2ddf("select Year,Month from airline left join year_names on (Year = Year_num) where Year_num > 2008 ")
-    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
     println(collection2.mkString("\n"))
 
   }
 
   it should "run a sql command with an orderby" in {
     val ddf4 = ddf.sql2ddf("select Year,Month from airline order by Year DESC")
-    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
     println(collection2.mkString("\n"))
     val list = collection2.asJava
     list.get(0).productArity should be(2)
@@ -84,7 +83,7 @@ class SqlHandlerSpec extends BaseSpec {
 
   it should "run a sql command with an orderby and limit" in {
     val ddf4 = ddf.sql2ddf("select Year,Month from airline order by Year DESC limit 2")
-    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
     println(collection2.mkString("\n"))
     val list = collection2.asJava
     list.size should be(2)
@@ -92,11 +91,11 @@ class SqlHandlerSpec extends BaseSpec {
     list.get(0).productElement(0) should be(2010)
   }
 
-  //  it should "run a sql command with a groupby and order by" in {
-//    val ddf4 = ddf.sql2ddf("select Year,Month,Count(Cancelled) from airline group by Count(Cancelled) order by Year DESC")
-//    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS:_*).asInstanceOf[DataSet[Row]].collect
-//    println(collection2.mkString("\n"))
-//  }
+  it should "run a sql command with a group-by and order-by and limit" in {
+    val ddf4 = ddf.sql2ddf("select Year,Month,Count(Cancelled) from airline group by Year,Month order by Year DESC limit 5")
+    val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
+    println(collection2.mkString("\n"))
+  }
 
 
 }

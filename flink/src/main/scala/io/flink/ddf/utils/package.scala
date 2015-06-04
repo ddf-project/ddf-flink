@@ -322,6 +322,7 @@ package object utils {
 
 
   object Sorts {
+    //TODO use sort partitions followed by reduce on a single partition
     def sort(ds: DataSet[Row], schema: Schema, orderFields: Seq[String], orderAsc: Array[Boolean]) = {
       val orderFieldIndices: Seq[Int] = orderFields.map{ field=>
         val idx = schema.getColumnIndex(field)

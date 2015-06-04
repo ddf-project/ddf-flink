@@ -38,7 +38,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
         ddf
 
       case s: Select =>
-        val newDDF = select2ddf(s)
+        val newDDF = select2ddf(theDDF,s)
         this.getManager.addDDF(newDDF)
         newDDF
     }
@@ -63,24 +63,72 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   }
 
 
-  protected def select2ddf(s: Select) = {
+  protected def select2ddf(ddf:DDF,s: Select) = {
     s.validate
     val ddf = this.getManager.getDDFByName(s.relations.head.getTableName)
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
     val table: DataSet[Row] = ddf.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[DataSet[Row]]
     val where = s.where.orNull
     val group = s.group.orNull
-    var joined = table
-    var joinedSchemaCols = ddf.getSchema.getColumns
 
-    val joins = s.relations.filter(i => i.isInstanceOf[JoinRelation])
-    if (s.project.isStar) {
-      joined = joined.select(ddf.getSchema.getColumnNames.mkString(","))
-    } else {
-      joined = joined.select(s.project.asInstanceOf[ExprProjection].expressions: _*)
+    val (cols,joined:DataSet[Row]) = join(ddf,typeSpecs,table,s)
+
+    val filtered:DataSet[Row] = if (where != null) joined.where(where.expression) else joined
+    val projected:DataSet[Row] = if(group!=null){
+      if (s.project.isStar) {
+        filtered.groupBy(group.expression: _*).select(ddf.getSchema.getColumnNames.mkString(","))
+      } else {
+        filtered.groupBy(group.expression: _*).select(s.project.asInstanceOf[ExprProjection].expressions: _*)
+      }
+    }else{
+      project(s, ddf, filtered)
     }
 
-    var cols: List[Schema.Column] = null
+    val schemaCols = if (cols == null) {
+      def typeInfo: RowTypeInfo = projected.getType() match {
+        case r: RenamingProxyTypeInfo[Row] => r.getUnderlyingType.asInstanceOf[RowTypeInfo]
+        case t: RowTypeInfo => t
+      }
+      Column2RowTypeInfo.getColumns(typeInfo).toList
+    }else{
+      cols
+    }
+
+    val tableName = ddf.getSchemaHandler.newTableName
+    val schema = new Schema(tableName, schemaCols)
+    //now order by and limit
+    val sorted:DataSet[Row] = sort(s, projected, schema)
+    val finalDataSet = limit(s, sorted)
+
+    val newDDF = this.getManager.newDDF(finalDataSet, dsrTypeSpecs, null, tableName, schema)
+    newDDF
+  }
+
+
+  def limit(s: Select, dataSet: DataSet[Row]): DataSet[Row] = {
+    if (s.limit > 0) dataSet.first(s.limit) else dataSet
+  }
+
+  def project(s: Select, ddf: DDF, dataSet: DataSet[Row]): DataSet[Row] = {
+    if (s.project.isStar) {
+      dataSet.select(ddf.getSchema.getColumnNames.mkString(","))
+    } else {
+      dataSet.select(s.project.asInstanceOf[ExprProjection].expressions: _*)
+    }
+  }
+
+  def sort(s: Select, dataSet: DataSet[Row], schema: Schema): DataSet[Row] = {
+    s.order.map { ord =>
+      val orderByFields = ord.columns.map(_._1)
+      val order: Array[Boolean] = ord.columns.map(_._2).toArray
+      Sorts.sort(dataSet, schema, orderByFields, order)
+    }.getOrElse(dataSet)
+  }
+
+  def join(ddf:DDF,typeSpecs: Array[Class[_]],table:DataSet[Row],s:Select): (List[Column],DataSet[Row]) = {
+    val joins = s.relations.filter(i => i.isInstanceOf[JoinRelation])
+    var cols: List[Column] = null
+    var joined = table
     joins.map { j =>
       val join = j.asInstanceOf[JoinRelation]
       val ddf2 = this.getManager.getDDFByName(join.withTableName)
@@ -92,28 +140,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
       cols = newCols.toList
       joined = newDS
     }
-    if (where != null) joined = joined.where(where.expression)
-    if (group != null) joined = joined.groupBy(group.expression: _*)
-
-    if (cols == null) {
-      def typeInfo: RowTypeInfo = joined.getType() match {
-        case r: RenamingProxyTypeInfo[Row] => r.getUnderlyingType.asInstanceOf[RowTypeInfo]
-        case t: RowTypeInfo => t
-      }
-      cols = Column2RowTypeInfo.getColumns(typeInfo).toList
-    }
-    val tableName = ddf.getSchemaHandler.newTableName
-    val schema = new Schema(tableName, cols)
-    joined = s.order.map { ord =>
-      val orderByFields = ord.columns.map(_._1)
-      val order: Array[Boolean] = ord.columns.map(_._2).toArray
-      Sorts.sort(joined, schema, orderByFields, order)
-    }.getOrElse(joined)
-
-    if (s.limit > 0) joined = joined.first(s.limit)
-
-    val newDDF = this.getManager.newDDF(joined, dsrTypeSpecs, null, tableName, schema)
-    newDDF
+    (cols,joined)
   }
 
   override def sql2ddf(command: String, schema: Schema): DDF = sql2ddf(command)
@@ -140,8 +167,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
         seqAsJavaList(table.collect().map(_.toString()))
 
       case s: Select =>
-        val ddf = select2ddf(s)
-
+        val ddf = select2ddf(theDDF,s)
         val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
         seqAsJavaList(table.collect().map(_.toString()))
     }

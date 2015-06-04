@@ -33,7 +33,8 @@ object Column2RowTypeInfo extends Serializable {
     rowTypeInfo.fieldNames.map {
       col =>
 
-        val fieldType= rowTypeInfo.getTypeAt(col).getTypeClass.getName
+        val rowIndex = rowTypeInfo.getFieldIndex(col)
+        val fieldType= rowTypeInfo.getTypeAt(rowIndex).getTypeClass.getName
         val colType = fieldType match {
           case "java.lang.String" => ColumnType.STRING
           case "java.lang.Integer" => ColumnType.INT
