@@ -4,8 +4,7 @@ import io.ddf.content.IHandleRepresentations
 import io.flink.ddf.BaseSpec
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.scala.table._
-import org.apache.flink.api.table.{Row, _}
-import org.rosuda.REngine.REXP
+import org.apache.flink.api.table.{Row, Table}
 
 class RepresentationHandlerSpec extends BaseSpec {
 
@@ -34,9 +33,11 @@ class RepresentationHandlerSpec extends BaseSpec {
     distinctYear.length should be(3)
   }
 
-  it should "get DataSet[REXP]" in {
-    val rEXPDataSet = handler.get(classOf[DataSet[_]], classOf[REXP]).asInstanceOf[DataSet[REXP]]
+  it should "get DataSet[FlinkRList]" in {
+    val rEXPDataSet = handler.get(classOf[DataSet[_]], classOf[FlinkRList]).asInstanceOf[DataSet[FlinkRList]]
     rEXPDataSet should not be null
+    val result = rEXPDataSet.first(1).collect().head
+    ddf.getSchema.getColumnNames should (contain(result.names(0)) and contain(result.names(13)))
   }
 
 }

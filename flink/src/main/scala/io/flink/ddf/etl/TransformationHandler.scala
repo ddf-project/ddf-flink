@@ -5,8 +5,8 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.etl.{TransformationHandler => CoreTransformationHandler}
 import io.ddf.exception.DDFException
-import org.apache.flink.api.scala.DataSet
-import org.apache.flink.api.scala._
+import io.flink.ddf.content.FlinkRList
+import org.apache.flink.api.scala.{DataSet, _}
 import org.rosuda.REngine.Rserve.{RConnection, StartRserve}
 import org.rosuda.REngine._
 
@@ -16,7 +16,7 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
   override def transformMapReduceNative(mapFuncDef: String, reduceFuncDef: String, mapsideCombine: Boolean = true): DDF = {
 
     // Prepare data as REXP objects
-    val dfrdd = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[REXP]).asInstanceOf[DataSet[REXP]]
+    val dfrdd = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[FlinkRList]).asInstanceOf[DataSet[FlinkRList]]
 
     // 1. map!
     val rMapped = dfrdd.map {
@@ -66,7 +66,7 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
 
   override def transformNativeRserve(transformExpression: String): DDF = {
 
-    val dfrdd = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[REXP]).asInstanceOf[DataSet[REXP]]
+    val dfrdd = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[FlinkRList]).asInstanceOf[DataSet[FlinkRList]]
 
     // process each DF partition in R
     val rMapped = dfrdd.map {
@@ -79,7 +79,11 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
 
           // send the df.partition to R process environment
           val dfvarname = "df.partition"
-          rconn.assign(dfvarname, partdf)
+
+          val rList: RList = new RList(partdf.content, partdf.names)
+          val dataFrame: REXP = REXP.createDataFrame(rList)
+
+          rconn.assign(dfvarname, dataFrame)
 
           val expr = String.format("%s <- transform(%s, %s)", dfvarname, dfvarname, transformExpression)
 
@@ -97,7 +101,7 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
 
           partdfres
         } catch {
-          case e: DDFException => 
+          case e: DDFException =>
             throw new DDFException("Unable to perform NativeRserve transformation", e)
         }
     }
@@ -108,7 +112,10 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
     val newSchema = new Schema(ddf.getSchemaHandler.newTableName(), columnArr.toList)
 
     val manager = this.getManager
-    val resultDDF = manager.newDDF(manager, rMapped, Array(classOf[DataSet[_]], classOf[REXP]), manager.getNamespace, null, newSchema)
+
+    val flinkRList = rMapped.map(rexp => FlinkRList(rexp.asList(), columnArr.map(_.getName)))
+
+    val resultDDF = manager.newDDF(manager, flinkRList, Array(classOf[DataSet[_]], classOf[FlinkRList]), manager.getNamespace, null, newSchema)
     mLog.info(">>>>> adding ddf to manager: " + ddf.getName)
     resultDDF.getMetaDataHandler.copyFactor(this.getDDF)
     resultDDF
@@ -137,7 +144,9 @@ object TransformationHandler {
 
   def RDataFrameToColumnList(dataSet: DataSet[REXP]): Array[Column] = {
     val firstdf = dataSet.first(1).collect().head
-    val names = firstdf.getAttribute("names").asStrings()
+    val trimmed: java.util.List[_] = firstdf._attr().asNativeJavaObject().asInstanceOf[java.util.List[_]]
+
+    val names = trimmed.get(0).asInstanceOf[Array[String]]
     val columns = new Array[Column](firstdf.length)
     for (j ← 0 until firstdf.length()) {
       val ddfType = firstdf.asList().at(j) match {
@@ -154,14 +163,18 @@ object TransformationHandler {
   /**
    * Perform map and mapsideCombine phase
    */
-  def preShuffleMapper(partdf: REXP, mapFuncDef: String, reduceFuncDef: String, mapsideCombine: Boolean): REXP = {
+  def preShuffleMapper(partdf: FlinkRList, mapFuncDef: String, reduceFuncDef: String, mapsideCombine: Boolean): REXP = {
     // check if Rserve is running, if not: start it
     if (!StartRserve.checkLocalRserve()) throw new RuntimeException("Unable to start Rserve")
     // one connection for each compute job
     val rconn = new RConnection()
 
+    println("after connecting, "+partdf.names.mkString(","))
+    val rList: RList = new RList(partdf.content, partdf.names)
+    val dataFrame: REXP = REXP.createDataFrame(rList)
+
     // send the df.partition to R process environment
-    rconn.assign("df.partition", partdf)
+    rconn.assign("df.partition", dataFrame)
     rconn.assign("mapside.combine", new REXPLogical(mapsideCombine))
 
     TransformationHandler.tryEval(rconn, "map.func <- " + mapFuncDef,
@@ -213,26 +226,20 @@ object TransformationHandler {
         |is.adatao.1d.kv <- function(kv) { ! is.null(attr(kv, "adatao-1d-kv-pair")) }
         |
         |do.pre.shuffle <- function(partition, map.func, combine.func, mapside.combine = T, debug = F) {
-        |  print("==== map phase begins ...")
         |  kv <- map.func(partition)
-        |  if (debug) { print("kv = "); str(kv) }
         |
         |  if (is.adatao.1d.kv(kv)) {
         |    # list of a single keyval object, with the serialized
         |    return(list(keyval.row(kv$key, serialize(kv$val, NULL))))
-        |  } else if (!is.adatao.kv(kv)) {
-        |    print(paste("skipping non-adatao kv = ", kv))
         |  }
         |
         |  val.bykey <- split(kv$val, f=kv$key)
-        |  if (debug) { print("val.bykey ="); str(val.bykey) }
         |  keys <- names(val.bykey)
         |
         |  result <- if (mapside.combine) {
         |    combine.result <- vector('list', length(keys))
         |    for (i in 1:length(val.bykey)) {
         |      kv <- combine.func(keys[[i]], val.bykey[[i]])
-        |      if (debug) { print("combined kv = "); str(kv) }
         |      combine.result[[i]] <- keyval.row(kv$key, serialize(kv$val, NULL))
         |    }
         |    # if (debug) print(combine.result)
@@ -258,8 +265,6 @@ object TransformationHandler {
         |    # if (debug) print(kvlist.byrow)
         |    kvlist.byrow
         |  }
-        |  print("==== map phase completed")
-        |  # if (debug) { print("kvlist.byrow = "); str(kvlist.byrow) }
         |  result
         |}
       """.stripMargin)
@@ -386,7 +391,6 @@ object TransformationHandler {
         |    df$key <- rkv$key
         |    df
         |  } else {
-        |    print("skipping not-supported reduce.func output = "); str(rkv)
         |    NULL
         |  }
         |}
@@ -408,7 +412,7 @@ object TransformationHandler {
         rconn.assign("reduce.serialized.vvlist", new REXPList(new RList(seqv)))
 
         // print to Rserve log
-        rconn.voidEval("print(paste('====== processing key = ', reduce.key))")
+//        rconn.voidEval("print(paste('====== processing key = ', reduce.key))")
 
         TransformationHandler.tryEval(rconn, "reduce.vvlist <- lapply(reduce.serialized.vvlist, unserialize)",
           errMsgHeader = "fail to unserialize shuffled values for key = " + k)
@@ -439,7 +443,7 @@ object TransformationHandler {
     val result = rconn.eval("reduced.partition")
 
     // print to Rserve log
-    rconn.voidEval("print('==== reduce phase completed')")
+//    rconn.voidEval("print('==== reduce phase completed')")
 
     // done R computation for this partition
     rconn.close()

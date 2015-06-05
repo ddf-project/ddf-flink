@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-class ArrayObject2REXP(@transient ddf: DDF) extends ConvertFunction(ddf) {
+class ArrayObject2FlinkRList(@transient ddf: DDF) extends ConvertFunction(ddf) {
 
   private def transformObjectArray2REXP(objArray: Seq[Object], column: Column): REXP = {
     val result: REXP =
@@ -40,7 +40,7 @@ class ArrayObject2REXP(@transient ddf: DDF) extends ConvertFunction(ddf) {
             val data: DataSet[Array[Object]] = dataSet.asInstanceOf[DataSet[Array[Object]]]
             val columnNames: Array[String] = ddf.getColumnNames.asScala.toArray
 
-            val dataSetREXP:DataSet[REXP] = data.mapPartition {
+            val dataSetREXP: DataSet[FlinkRList] = data.mapPartition {
               pdata =>
                 val subset = pdata.flatMap(x => x.zipWithIndex)
                 val groupedData = subset.toSeq.groupBy(elem => elem._2)
@@ -49,12 +49,11 @@ class ArrayObject2REXP(@transient ddf: DDF) extends ConvertFunction(ddf) {
                     transformObjectArray2REXP(colValues.map(_._1), columns(colIndex))
                 }.toArray
 
-                val dfList = new RList(rVectors, columnNames)
-
-                Iterator(REXP.createDataFrame(dfList))
+                val dfList = FlinkRList(rVectors, columnNames)
+                Iterator(dfList)
             }
 
-            new Representation(dataSetREXP, RepresentationHandler.DATASET_REXP.getTypeSpecsString)
+            new Representation(dataSetREXP, RepresentationHandler.DATASET_RList.getTypeSpecsString)
         }
     }
   }
