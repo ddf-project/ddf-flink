@@ -45,14 +45,14 @@ object RepresentationHandler {
     val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns))
     rowDataSet
   }
-  //TODO check what to set as defaults for different types - setting null throws error when serializing for the map job
+
   private def getFieldValue(elem: Object, isNumeric: Boolean): String = {
     val mayBeString: Try[String] = Try(elem.toString.trim)
     mayBeString match {
-      case Success(s) if isNumeric && s.equalsIgnoreCase("NA") => "0"
+      case Success(s) if isNumeric && s.equalsIgnoreCase("NA") => null
       case Success(s) => s
-      case Failure(e) if isNumeric => "0"
-      case Failure(e) => ""
+      case Failure(e) if isNumeric => null
+      case Failure(e) => null
     }
   }
 
@@ -65,19 +65,19 @@ object RepresentationHandler {
           case ColumnType.STRING =>
             row.setField(idx, colValue)
           case ColumnType.INT =>
-            row.setField(idx, Try(colValue.toInt).getOrElse(0))
+            row.setField(idx, Try(colValue.toInt).getOrElse(null))
           case ColumnType.LONG =>
-            row.setField(idx, Try(colValue.toLong).getOrElse(0))
+            row.setField(idx, Try(colValue.toLong).getOrElse(null))
           case ColumnType.FLOAT =>
-            row.setField(idx, Try(colValue.toFloat).getOrElse(0))
+            row.setField(idx, Try(colValue.toFloat).getOrElse(null))
           case ColumnType.DOUBLE =>
-            row.setField(idx, Try(colValue.toDouble).getOrElse(0))
+            row.setField(idx, Try(colValue.toDouble).getOrElse(null))
           case ColumnType.BIGINT =>
-            row.setField(idx, Try(colValue.toDouble).getOrElse(0))
+            row.setField(idx, Try(colValue.toDouble).getOrElse(null))
           case ColumnType.TIMESTAMP =>
-            row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(new Date(0)))
+            row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(null))
           case ColumnType.LOGICAL =>
-            row.setField(idx, Try(colValue.toBoolean).getOrElse(false))
+            row.setField(idx, Try(colValue.toBoolean).getOrElse(null))
         }
     }
     row

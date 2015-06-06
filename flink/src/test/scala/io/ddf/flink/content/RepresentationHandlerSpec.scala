@@ -39,5 +39,4 @@ class RepresentationHandlerSpec extends BaseSpec {
     val result = rEXPDataSet.first(1).collect().head
     ddf.getSchema.getColumnNames should (contain(result.names(0)) and contain(result.names(13)))
   }
-
 }

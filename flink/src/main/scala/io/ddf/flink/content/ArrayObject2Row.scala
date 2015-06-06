@@ -1,17 +1,13 @@
 package io.ddf.flink.content
 
-import java.text.SimpleDateFormat
-import java.util.Date
-
 import io.ddf.DDF
-import io.ddf.content.Schema.{Column, ColumnType}
+import io.ddf.content.Schema.Column
 import io.ddf.content.{ConvertFunction, Representation}
 import org.apache.flink.api.java.typeutils.ObjectArrayTypeInfo
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.table.Row
 
 import scala.collection.JavaConversions._
-import scala.util.{Failure, Success, Try}
 
 class ArrayObject2Row(@transient ddf: DDF) extends ConvertFunction(ddf) {
 
