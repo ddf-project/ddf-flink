@@ -10,8 +10,7 @@ import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.exception.DDFException
 import io.ddf.misc.ADDFFunctionalGroupHandler
 import io.ddf.types.AggregateTypes.{AggregateField, AggregateFunction, AggregationResult}
-import org.apache.flink.api.scala.DataSet
-import org.apache.flink.api.scala._
+import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.table.{Row, Table}
 
@@ -95,16 +94,27 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     resultDDF
   }
 
+  private def getCleanTable(columnNames: Seq[String]): Table = {
+    val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
+    val tableWithoutNull = table.select(columnNames.mkString(",")).where(columnNames.map{
+      c => s"$c.isNotNull"
+    }.mkString(" && "))
+    tableWithoutNull
+  }
+
   private def aggregateInternal[T](fields: Seq[AggregateField], f: (Table, Int, Int) => T): T = {
     val transformedFields: Seq[String] = getFields(fields)
+    val fieldString: String = transformedFields.mkString(",")
+
     val groupByColumns: Seq[String] = fields.filterNot(_.isAggregated).map(_.getColumn)
-    val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
+    val columnNames: Seq[String] = fields.map(_.getColumn).seq
+    val table = getCleanTable(columnNames)
+
     val transformedTable = groupByColumns.length match {
       case 0 => table
       case _ => table.groupBy(groupByColumns.mkString(","))
     }
 
-    val fieldString: String = transformedFields.mkString(",")
     val selectedTable: Table = transformedTable.select(fieldString)
 
     val colSize = transformedFields.length - 1
@@ -122,7 +132,7 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
 
   override def aggregateOnColumn(function: AggregateFunction, col: String): Double = {
     val methodName = getMethodName(function)
-    val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
+    val table = getCleanTable(Seq(col))
     val row: Row = table.select(s"${col.trim}.$methodName").first(1).collect().head
     row.productElement(0).toString.toDouble
   }
@@ -152,8 +162,8 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
   }
 
   override def groupBy(groupedColumns: util.List[String], aggregateFunctions: util.List[String]): DDF = {
-    val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
     val aggregateFields: util.List[AggregateField] = aggregateFunctions.map(stringToAggregateField)
+    val table = getCleanTable(groupedColumns ++ aggregateFields.map(_.getColumn))
     val fields: Seq[String] = getFields(aggregateFields)
     val selectedColumns: Seq[String] = (fields ++ groupedColumns).distinct
     val groupedData = table.groupBy(groupedColumns.map(_.trim).mkString(",")).select(selectedColumns.mkString(","))

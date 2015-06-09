@@ -1,8 +1,12 @@
 package io.ddf.flink.etl
 
-import io.ddf.etl.IHandleMissingData.{Axis, NAChecking}
+import io.ddf.DDF
+import io.ddf.etl.IHandleMissingData.{NAChecking, Axis}
 import io.ddf.exception.DDFException
 import io.ddf.flink.BaseSpec
+import io.ddf.types.AggregateTypes.AggregateFunction
+
+import scala.collection.JavaConversions._
 
 class MissingDataHandlerSpec extends BaseSpec {
 
@@ -50,12 +54,25 @@ class MissingDataHandlerSpec extends BaseSpec {
     }
   }
 
-  /*it should "fill by value" in {
-    val ddf1: DDF = missingData.VIEWS.project(List("V1", "V17", "V28", "V29"))
-
+  it should "fill by value" in {
+    val ddf1: DDF = ddf.VIEWS.project(List("V1", "V29"))
     val filledDDF: DDF = ddf1.fillNA("0")
     val annualDelay = filledDDF.aggregate("V1, sum(V29)").get("2008")(0)
     annualDelay should be(282.0 +- 0.1)
-  }*/
+  }
+
+  it should "fill by dictionary" in {
+    val ddf1: DDF = ddf.VIEWS.project(List("V1", "V28", "V29"))
+    val dict: Map[String, String] = Map("V1" -> "2000", "V28" -> "0", "V29" -> "1")
+    val filledDDF = ddf1.getMissingDataHandler.fillNA(null, null, 0, null, dict, null)
+    val annualDelay = filledDDF.aggregate("V1, sum(V29)").get("2008")(0)
+    annualDelay should be(302.0 +- 0.1)
+  }
+
+  it should "fill by aggregate function" in {
+    val ddf1: DDF = ddf.VIEWS.project(List("V1", "V28", "V29"))
+    val result = ddf1.getMissingDataHandler.fillNA(null, null, 0, AggregateFunction.MEAN, null, null)
+    result should not be (null)
+  }
 
 }
