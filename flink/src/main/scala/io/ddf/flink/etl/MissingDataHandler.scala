@@ -1,21 +1,22 @@
 package io.ddf.flink.etl
 
 import java.security.SecureRandom
+import java.text.SimpleDateFormat
 import java.util
 
 import io.ddf.DDF
 import io.ddf.content.Schema
-import io.ddf.content.Schema.Column
+import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.etl.IHandleMissingData
 import io.ddf.etl.IHandleMissingData.{Axis, FillMethod, NAChecking}
 import io.ddf.exception.DDFException
 import io.ddf.misc.ADDFFunctionalGroupHandler
 import io.ddf.types.AggregateTypes.AggregateFunction
+import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.Row
 
 import scala.collection.JavaConversions._
-import scala.collection.JavaConverters._
 
 class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandleMissingData {
 
@@ -86,8 +87,8 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
 
   override def dropNA(axis: Axis, how: NAChecking, threshold: Long, columns: util.List[String]): DDF = {
     val columnNames: List[String] = columns match {
-      case c if (c == null || c.isEmpty) => ddf.getColumnNames.asScala.toList
-      case _ => columns.asScala.toList
+      case c if (c == null || c.isEmpty) => ddf.getColumnNames.toList
+      case _ => columns.toList
     }
     val columnNamesString = columnNames.mkString(",")
 
@@ -114,7 +115,77 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
   }
 
   override def fillNA(value: String, method: FillMethod, limit: Long, function: AggregateFunction,
-                      columnsToValues: util.Map[String, String], columns: util.List[String]): DDF =
-  //TODO
-    throw new DDFException("This has not been implemented yet.")
+                      columnsToValues: util.Map[String, String], columns: util.List[String]): DDF = {
+
+    method match {
+      case null =>
+        fillByValue(value, function, columnsToValues, columns)
+      case _ =>
+        throw new DDFException("This has not been implemented yet.")
+    }
+  }
+
+  private def fillByValue(value: String,
+                          aggregateFunction: AggregateFunction,
+                          columnsToValues: util.Map[String, String],
+                          columns: util.List[String]): DDF = {
+    val dataColumns = columns match {
+      case c if (c == null || c.isEmpty) => ddf.getSchema.getColumns.zipWithIndex.toList
+      case _ => columns.map {
+        cName =>
+          val column = ddf.getColumn(cName)
+          val index = ddf.getColumnIndex(cName)
+          (column, index)
+      }.toList
+    }
+
+    val schemaColumns = dataColumns.zipWithIndex.map {
+      case ((col, oldIndex), currentIndex) =>
+        val columnName: String = col.getName
+        val defaultValue = if (value != null) {
+          value
+        } else if (columnsToValues != null && columnsToValues.containsKey(columnName)) {
+          columnsToValues(columnName)
+        } else if (aggregateFunction != null && col.isNumeric) {
+          ddf.getAggregationHandler.aggregateOnColumn(aggregateFunction, columnName).toString
+        } else {
+          throw new DDFException("Invalid fill value")
+        }
+        SchemaColumn(columnName, col.getType, oldIndex, currentIndex, defaultValue)
+    }
+
+    val dateFormat = new SimpleDateFormat()
+
+    implicit val typeInfo: TypeInformation[Row] = rowDataSet.getType()
+    val result: DataSet[Row] = rowDataSet.map {
+      row =>
+        val generatedRow = new Row(schemaColumns.length)
+
+        schemaColumns.foreach {
+          case col =>
+            val index = col.currentIndex
+            row.productElement(col.oldIndex) match {
+              case null =>
+                val replaceWithValue = col.default
+                col.cType match {
+                  case ColumnType.STRING => generatedRow.setField(index, replaceWithValue)
+                  case ColumnType.INT => generatedRow.setField(index, replaceWithValue.toInt)
+                  case ColumnType.LONG => generatedRow.setField(index, replaceWithValue.toLong)
+                  case ColumnType.FLOAT => generatedRow.setField(index, replaceWithValue.toFloat)
+                  case ColumnType.DOUBLE => generatedRow.setField(index, replaceWithValue.toDouble)
+                  case ColumnType.BIGINT => generatedRow.setField(index, replaceWithValue.toDouble)
+                  case ColumnType.TIMESTAMP => generatedRow.setField(index, dateFormat.parse(replaceWithValue))
+                  case ColumnType.LOGICAL => generatedRow.setField(index, replaceWithValue.toBoolean)
+                }
+              case x =>
+                generatedRow.setField(index, x)
+            }
+        }
+        generatedRow
+    }
+
+    generateDDF(result, Array(classOf[DataSet[_]], classOf[Row]), schemaColumns.map {
+      col => new Column(col.name, col.cType)
+    })
+  }
 }
