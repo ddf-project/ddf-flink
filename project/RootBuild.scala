@@ -158,7 +158,8 @@ object RootBuild extends Build {
   val flink_dependencies = Seq(
     "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm", "asm"),
     "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a" exclude("asm", "asm"),
-    "com.clearspring.analytics" % "stream" % "2.4.0"  exclude("asm","asm")
+    "com.clearspring.analytics" % "stream" % "2.4.0"  exclude("asm","asm"),
+    "org.apache.commons" % "commons-math3" % "3.5"
   )
 
 

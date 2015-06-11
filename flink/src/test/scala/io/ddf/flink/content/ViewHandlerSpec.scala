@@ -1,7 +1,6 @@
 package io.ddf.flink.content
 
 import io.ddf.DDF
-import io.ddf.content.ViewHandler.{OperationName, Operator}
 import io.ddf.flink.BaseSpec
 
 class ViewHandlerSpec extends BaseSpec {
@@ -23,23 +22,14 @@ class ViewHandlerSpec extends BaseSpec {
     newddf3.getNumColumns should be(26)
   }
 
-//  it should "test subsetting with grep" in {
-//    val ddf = airlineDDF
-//    val columns: java.util.List[ViewHandler.Column] = new java.util.ArrayList()
-//    val col: ViewHandler.Column = new ViewHandler.Column
-//    col.setName("origin")
-//    columns.add(col)
-//
-//    val grep: Operator = new Operator
-//    grep.setName(OperationName.grep)
-//    val operands: Array[ViewHandler.Expression] = new Array[ViewHandler.Expression](2)
-//    val `val`: ViewHandler.StringVal = new ViewHandler.StringVal
-//    `val`.setValue("IAD")
-//    operands(0) = `val`
-//    operands(1) = col
-//    grep.setOperarands(operands)
-//
-//    val ddf2: DDF = ddf.VIEWS.subset(columns, grep)
-//    ddf2.getNumRows should be(2)
-//  }
+
+  it should "test sample" in {
+    val ddf = loadMtCarsDDF()
+    val sample = ddf.VIEWS.getRandomSample(10)
+
+    sample.get(0)(0).asInstanceOf[Double] should not be (sample.get(1)(0).asInstanceOf[Double])
+    sample.get(1)(0).asInstanceOf[Double] should not be (sample.get(2)(0).asInstanceOf[Double])
+    sample.get(2)(0).asInstanceOf[Double] should not be (sample.get(3)(0).asInstanceOf[Double])
+    sample.size should be(10)
+  }
 }
