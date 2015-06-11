@@ -4,6 +4,7 @@ import java.util.Date
 
 import io.ddf.content.Schema.{Column, ColumnType}
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo
+import org.apache.flink.api.java.typeutils.{ObjectArrayTypeInfo, TupleTypeInfo}
 import org.apache.flink.api.scala.typeutils.CaseClassTypeInfo
 import org.apache.flink.api.table.Row
 import org.apache.flink.api.table.expressions.{Expression, ResolvedFieldReference}
@@ -11,6 +12,8 @@ import org.apache.flink.api.table.typeinfo.RowTypeInfo
 import org.apache.flink.api.scala._
 
 object Column2RowTypeInfo extends Serializable {
+
+
   def getRowTypeInfo(columns: Seq[Column]): RowTypeInfo = {
     val fields: Seq[Expression] = columns.map {
       col =>

@@ -3,6 +3,7 @@ package io.ddf.flink
 import java.util
 
 import com.clearspring.analytics.stream.quantile.QDigest
+import com.univocity.parsers.csv.{CsvParser, CsvParserSettings}
 import io.ddf.DDF
 import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
@@ -10,12 +11,14 @@ import io.ddf.etl.Types.JoinType
 import io.ddf.flink.content.RepresentationHandler
 import org.apache.flink.api.common.accumulators.{Accumulator, Histogram}
 import org.apache.flink.api.common.functions.RichFlatMapFunction
+import org.apache.flink.api.common.io.DelimitedInputFormat
 import org.apache.flink.api.common.operators.Order
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.DiscardingOutputFormat
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
 import org.apache.flink.api.table.Row
 import org.apache.flink.configuration.Configuration
+import org.apache.flink.core.fs.Path
 import org.apache.flink.util.{AbstractID, Collector}
 
 import scala.collection.JavaConversions._
@@ -324,7 +327,7 @@ package object utils {
   object Sorts {
     //TODO use sort partitions followed by reduce on a single partition
     def sort(ds: DataSet[Row], schema: Schema, orderFields: Seq[String], orderAsc: Array[Boolean]) = {
-      val orderFieldIndices: Seq[Int] = orderFields.map{ field=>
+      val orderFieldIndices: Seq[Int] = orderFields.map { field =>
         val idx = schema.getColumnIndex(field)
         idx
       }
@@ -346,5 +349,43 @@ package object utils {
     }
 
   }
+
+
+  class SerCsvParserSettings extends CsvParserSettings with Serializable
+
+
+  class StringArrayCsvInputFormat(filePath: Path, delimiter: Char, emptyValue: String) extends DelimitedInputFormat[Array[String]] {
+    val charsetName = "UTF-8"
+    val isFSV = delimiter == ' ' || delimiter == '\t'
+
+
+    @transient var parser = initParser
+
+    def getParser = {
+      if (parser == null) parser = initParser
+      parser
+    }
+
+    def initParser = {
+      val parserSettings = new SerCsvParserSettings()
+      parserSettings.setIgnoreLeadingWhitespaces(false)
+      parserSettings.setIgnoreTrailingWhitespaces(false)
+      parserSettings.getFormat.setDelimiter(delimiter)
+      new CsvParser(parserSettings)
+    }
+
+
+    override def readRecord(reuse: Array[String], bytes: Array[Byte], offset: Int, byteSize: Int): Array[String] = {
+      var numBytes = byteSize
+      if (this.getDelimiter() != null && this.getDelimiter().length == 1 && this.getDelimiter()(0) == 10
+        && offset + numBytes >= 1 && bytes(offset + numBytes - 1) == 13) {
+        numBytes = numBytes - 1
+      }
+
+      val line = new String(bytes, offset, numBytes, this.charsetName);
+      getParser.parseLine(line)
+    }
+  }
+
 
 }

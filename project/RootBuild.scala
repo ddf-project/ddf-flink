@@ -113,7 +113,8 @@ object RootBuild extends Build {
     "org.apache.flink" % "flink-clients" % flinkVersion excludeAll(excludeJUnit) changing(),
     "org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit) changing(),
     "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit) changing(),
-    "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit) changing()
+    "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit) changing(),
+    "com.univocity" % "univocity-parsers" % "1.5.5"
   )
 
   val scalaArtifacts = Seq("jline", "scala-compiler", "scala-library", "scala-reflect")

@@ -15,7 +15,7 @@ class BinningHandlerSpec extends BaseSpec {
 
     newDDF.getSchemaHandler.getColumn("dayofweek").getColumnClass should be(ColumnClass.FACTOR)
 
-    newDDF.getSchemaHandler.getColumn("dayofweek").getOptionalFactor.getLevelMap.size should be(2)
+    newDDF.getSchemaHandler.getColumn("dayofweek").getOptionalFactor.getLevelMap.size should be(3)
 
     val ddf1: DDF = ddf.binning("month", "custom", 0, Array[Double](2, 4, 6, 8), true, true)
 

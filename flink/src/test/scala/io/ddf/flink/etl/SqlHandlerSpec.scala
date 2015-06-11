@@ -66,6 +66,7 @@ class SqlHandlerSpec extends BaseSpec {
   }
 
   it should "run a sql command with a join and where" in {
+    val ddf = airlineDDF
     val ddf4 = ddf.sql2ddf("select Year,Month from airline left join year_names on (Year = Year_num) where Year_num > 2008 ")
     val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
     println(collection2.mkString("\n"))
@@ -73,6 +74,7 @@ class SqlHandlerSpec extends BaseSpec {
   }
 
   it should "run a sql command with an orderby" in {
+    val ddf = airlineDDF
     val ddf4 = ddf.sql2ddf("select Year,Month from airline order by Year DESC")
     val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
     println(collection2.mkString("\n"))
@@ -82,6 +84,7 @@ class SqlHandlerSpec extends BaseSpec {
   }
 
   it should "run a sql command with an orderby and limit" in {
+    val ddf = airlineDDF
     val ddf4 = ddf.sql2ddf("select Year,Month from airline order by Year DESC limit 2")
     val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
     println(collection2.mkString("\n"))
@@ -92,6 +95,7 @@ class SqlHandlerSpec extends BaseSpec {
   }
 
   it should "run a sql command with a group-by and order-by and limit" in {
+    val ddf = airlineDDF
     val ddf4 = ddf.sql2ddf("select Year,Month,Count(Cancelled) from airline group by Year,Month order by Year DESC limit 5")
     val collection2: Seq[Row] = ddf4.getRepresentationHandler.get(RepresentationHandler.DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]].collect
     println(collection2.mkString("\n"))

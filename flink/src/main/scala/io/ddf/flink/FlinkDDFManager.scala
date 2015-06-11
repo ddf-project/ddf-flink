@@ -4,10 +4,13 @@ import java.security.SecureRandom
 
 import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
+import io.ddf.flink.content.RepresentationHandler
 import io.ddf.flink.utils.Utils
 import io.ddf.{DDF, DDFManager}
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
+import org.apache.flink.api.table.Row
 import org.slf4j.LoggerFactory
+import scala.collection.JavaConverters._
 
 class FlinkDDFManager extends DDFManager {
 
@@ -25,14 +28,15 @@ class FlinkDDFManager extends DDFManager {
     val subset = fileData.first(5).map(_.map(_.toString)).collect()
     val columns: Array[Column] = getColumnInfo(subset)
 
-    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
+    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
     val namespace: String = "FlinkDDF"
     val rand: SecureRandom = new SecureRandom
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
 
     val schema: Schema = new Schema(tableName, columns)
+    val rowDS = RepresentationHandler.getRowDataSet(fileData,schema.getColumns.asScala.toList,false)
 
-    val ddf = this.newDDF(fileData, typeSpecs, namespace, tableName, schema)
+    val ddf = this.newDDF(rowDS, typeSpecs, namespace, tableName, schema)
     this.addDDF(ddf)
     ddf
   }

@@ -8,6 +8,7 @@ import org.apache.flink.api.table.{Row, Table}
 
 class RepresentationHandlerSpec extends BaseSpec {
 
+  override val ddf = loadAirlineDDF()
   val handler: IHandleRepresentations = ddf.getRepresentationHandler
 
   it should "have default datatype as DataSet[Array[Object]]" in {
@@ -21,6 +22,7 @@ class RepresentationHandlerSpec extends BaseSpec {
   }
 
   it should "get DataSet[Row]" in {
+
     val rowDataSet = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Row]).asInstanceOf[DataSet[Row]]
     val rows: Seq[Row] = rowDataSet.first(1).collect()
     rows.head.productElement(0) should be(2008)
@@ -28,7 +30,7 @@ class RepresentationHandlerSpec extends BaseSpec {
 
   it should "get Table" in {
     val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
-    val distinctYear = table.select("V1").distinct.collect()
+    val distinctYear = table.select("Year").distinct.collect()
     //years 2008,2009 and 2010
     distinctYear.length should be(3)
   }

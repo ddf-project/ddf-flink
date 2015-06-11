@@ -4,11 +4,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import io.ddf.DDF
-import io.ddf.content.Schema.{ColumnType, Column}
+import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.content.{Representation, RepresentationHandler => RH}
-import RepresentationHandler._
+import io.ddf.flink.content.RepresentationHandler._
 import org.apache.flink.api.scala.DataSet
-import org.apache.flink.api.table.{Table, Row}
+import org.apache.flink.api.table.{Row, Table}
 
 import scala.util.{Failure, Success, Try}
 
@@ -39,10 +39,10 @@ object RepresentationHandler {
 
   private val dateFormat = new SimpleDateFormat()
 
-  def getRowDataSet(dataSet: DataSet[_],columns: List[Column]): DataSet[Row] = {
+  def getRowDataSet(dataSet: DataSet[_], columns: List[Column], useDefaults:Boolean=true): DataSet[Row] = {
     val idxColumns: Seq[(Column, Int)] = columns.zipWithIndex.toSeq
     implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo(columns)
-    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns))
+    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns,useDefaults))
     rowDataSet
   }
 
@@ -56,7 +56,7 @@ object RepresentationHandler {
     }
   }
 
-  private def parseRow(rowArray: Array[Object], idxColumns: Seq[(Column, Int)]): Row = {
+  private def parseRow(rowArray: Array[Object], idxColumns: Seq[(Column, Int)],useDefaults:Boolean): Row = {
     val row = new Row(idxColumns.length)
     idxColumns foreach {
       case (col, idx) =>
@@ -65,19 +65,19 @@ object RepresentationHandler {
           case ColumnType.STRING =>
             row.setField(idx, colValue)
           case ColumnType.INT =>
-            row.setField(idx, Try(colValue.toInt).getOrElse(null))
+            row.setField(idx, Try(colValue.toInt).getOrElse(if(useDefaults) 0 else null))
           case ColumnType.LONG =>
-            row.setField(idx, Try(colValue.toLong).getOrElse(null))
+            row.setField(idx, Try(colValue.toLong).getOrElse(if(useDefaults) 0 else null))
           case ColumnType.FLOAT =>
-            row.setField(idx, Try(colValue.toFloat).getOrElse(null))
+            row.setField(idx, Try(colValue.toFloat).getOrElse(if(useDefaults) 0 else null))
           case ColumnType.DOUBLE =>
-            row.setField(idx, Try(colValue.toDouble).getOrElse(null))
+            row.setField(idx, Try(colValue.toDouble).getOrElse(if(useDefaults) 0 else null))
           case ColumnType.BIGINT =>
-            row.setField(idx, Try(colValue.toDouble).getOrElse(null))
+            row.setField(idx, Try(colValue.toDouble).getOrElse(if(useDefaults) 0 else null))
           case ColumnType.TIMESTAMP =>
-            row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(null))
+            row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(new Date(0)))
           case ColumnType.LOGICAL =>
-            row.setField(idx, Try(colValue.toBoolean).getOrElse(null))
+            row.setField(idx, Try(colValue.toBoolean).getOrElse(if(useDefaults) false else null))
         }
     }
     row

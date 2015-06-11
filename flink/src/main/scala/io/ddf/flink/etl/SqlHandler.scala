@@ -8,15 +8,17 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, DataFormat}
 import io.ddf.etl.ASqlHandler
 import io.ddf.flink.FlinkDDFManager
+import io.ddf.flink.content.{RepresentationHandler, Column2RowTypeInfo}
 import io.ddf.flink.content.SqlSupport._
-import io.ddf.flink.content.{Column2RowTypeInfo, SqlSupport}
-import io.ddf.flink.utils.{Joins, Sorts}
+import io.ddf.flink.utils.{Joins, Sorts, StringArrayCsvInputFormat}
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.typeinfo.{RenamingProxyTypeInfo, RowTypeInfo}
 import org.apache.flink.api.table.{Row, Table}
+import org.apache.flink.core.fs.Path
 
 import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 
 class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
@@ -44,7 +46,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     }
   }
 
-  protected def load2ddf(l: Load) = {
+  protected def load2ddf2(l: Load) = {
     val ddf = this.getManager.getDDFByName(l.tableName)
     val env = this.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
     val dataSet = env
@@ -52,6 +54,19 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
       .map(_.split(",").map(_.asInstanceOf[Object]))
 
     ddf.getRepresentationHandler.set(dataSet, dsoTypeSpecs: _*)
+    ddf
+  }
+
+  protected def load2ddf(l: Load) = {
+    val ddf = this.getManager.getDDFByName(l.tableName)
+    val env = this.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
+    val path = new Path(l.url)
+    val csvInputFormat = new StringArrayCsvInputFormat(path,l.delimiter,l.emptyValue)
+    val dataSet:DataSet[Array[Object]] = env.readFile(csvInputFormat,l.url).map{ row=>
+      row.map(_.asInstanceOf[Object])
+    }
+    val rowDS = RepresentationHandler.getRowDataSet(dataSet,ddf.getSchema.getColumns.asScala.toList,l.useDefaults)
+    ddf.getRepresentationHandler.set(rowDS, dsrTypeSpecs: _*)
     ddf
   }
 
@@ -164,7 +179,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
       case l: Load =>
         val ddf = load2ddf(l)
         val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
-        seqAsJavaList(table.collect().map(_.toString()))
+        Collections.singletonList("0")//seqAsJavaList(table.collect().map(_.toString()))
 
       case s: Select =>
         val ddf = select2ddf(theDDF,s)
