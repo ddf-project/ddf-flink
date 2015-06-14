@@ -108,6 +108,9 @@ public class MLSupporter extends ADDFFunctionalGroupHandler implements ISupportM
     // Now we need to map the DDF and its column specs to the input format expected by the method we're invoking
     Object[] allArgs = this.buildArgsForMethod(trainMethod.getMethod(), paramArgs);
 
+    for(Object aa : allArgs)
+    System.out.println(aa.getClass().getCanonicalName() + ":" + aa);
+
     // Invoke the training method
     Object rawModel = trainMethod.classInvoke(allArgs);
 

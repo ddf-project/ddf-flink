@@ -6,7 +6,7 @@ import io.spark.ddf.{ATestSuite, SparkDDF}
 
 /**
   */
-class MLSupporterSuite extends ATestSuite {
+class  MLSupporterSuite extends ATestSuite {
   createTableAirlineSmall()
 
   test("Test KMeans Prediction") {

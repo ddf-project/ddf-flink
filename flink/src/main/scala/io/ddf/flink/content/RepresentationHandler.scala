@@ -9,6 +9,8 @@ import io.ddf.content.{Representation, RepresentationHandler => RH}
 import io.ddf.flink.content.RepresentationHandler._
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.table.{Row, Table}
+import org.apache.flink.ml.common.LabeledVector
+import org.apache.flink.ml.math.{Vector => FVector}
 
 import scala.util.{Failure, Success, Try}
 
@@ -22,6 +24,13 @@ class RepresentationHandler(ddf: DDF) extends RH(ddf) {
   this.addConvertFunction(DATASET_ROW, DATASET_ARR_OBJECT, new Row2ArrayObject(this.ddf))
   this.addConvertFunction(TABLE, DATASET_ROW, new Table2DataSetRow(this.ddf))
   this.addConvertFunction(DATASET_ARR_OBJECT, DATASET_RList, new ArrayObject2FlinkRList(this.ddf))
+  this.addConvertFunction(DATASET_ARR_OBJECT, DATASET_ARR_DOUBLE, new ArrayObject2ArrayDouble(this.ddf))
+  this.addConvertFunction(DATASET_ARR_DOUBLE, DATASET_ARR_OBJECT, new ArrayDouble2ArrayObject(this.ddf))
+
+  //ML Related representations
+  this.addConvertFunction(DATASET_ARR_DOUBLE, DATASET_LABELED_VECTOR, new ArrayDouble2LabeledVector(this.ddf))
+  this.addConvertFunction(DATASET_ARR_DOUBLE, DATASET_VECTOR, new ArrayDouble2Vector(this.ddf))
+  this.addConvertFunction(DATASET_LABELED_VECTOR, DATASET_ARR_DOUBLE, new LabeledVector2ArrayDouble(this.ddf))
 }
 
 object RepresentationHandler {
@@ -36,6 +45,10 @@ object RepresentationHandler {
   val DATASET_ROW_TYPE_SPECS = Array(classOf[DataSet[_]], classOf[Row])
   val TABLE_TYPE_SPECS = Array(classOf[Table])
   val DATASET_ARR_OBJ_TYPE_SPECS = Array(classOf[DataSet[_]], classOf[Array[Object]])
+  val DATASET_ARR_DOUBLE = new Representation(classOf[DataSet[_]], classOf[Array[Double]])
+
+  val DATASET_LABELED_VECTOR = new Representation(classOf[DataSet[_]], classOf[LabeledVector])
+  val DATASET_VECTOR = new Representation(classOf[DataSet[_]], classOf[FVector])
 
   private val dateFormat = new SimpleDateFormat()
 

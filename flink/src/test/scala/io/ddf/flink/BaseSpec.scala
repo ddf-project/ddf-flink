@@ -16,6 +16,24 @@ class BaseSpec extends FlatSpec with Matchers {
     lDdf
   }
 
+  def loadIrisTrain(): DDF = {
+    try {
+      flinkDDFManager.getDDFByName("iris")
+    } catch {
+      case e: Exception =>
+        flinkDDFManager.sql2txt("create table iris (flower double, petal double, septal double)")
+        val filePath = getClass.getResource("/fisheriris.csv").getPath
+        flinkDDFManager.sql2txt("load '" + filePath + "' into iris")
+        flinkDDFManager.getDDFByName("iris")
+    }
+  }
+
+  def loadIrisTest(): DDF = {
+    val train = flinkDDFManager.getDDFByName("iris")
+    //train.sql2ddf("SELECT petal, septal FROM iris WHERE flower = 1.0000")
+    train.VIEWS.project("petal", "septal")
+  }
+
   def loadAirlineDDF(): DDF = {
     var ddf: DDF = null
     try {

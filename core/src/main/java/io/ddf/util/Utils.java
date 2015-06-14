@@ -475,6 +475,7 @@ public class Utils {
       try {
         return this.getMethod().invoke(null, args);
       } catch (Exception e) {
+        e.printStackTrace();
         throw new DDFException(e.getMessage(), e.getCause());
       }
     }
@@ -490,6 +491,7 @@ public class Utils {
         throw new DDFException(String.format("Error while invoking method %s on object %s", this.getMethod().getName(),
             this.getObject().getClass().getName()), e);
       }
+
     }
   }
 

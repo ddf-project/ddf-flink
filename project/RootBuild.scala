@@ -98,6 +98,8 @@ object RootBuild extends Build {
   val excludeEverythingHackForMakePom = ExclusionRule(organization = "_MAKE_POM_EXCLUDE_ALL_", name = "_MAKE_POM_EXCLUDE_ALL_")
 
   val excludeJUnit = ExclusionRule(organization = "junit", name = "junit")
+
+  val excludeBreeze= ExclusionRule(organization = "org.scalanlp", name = "*")
   // We define this explicitly rather than via unmanagedJars, so that make-pom will generate it in pom.xml as well
   // org % package % version
 
@@ -114,7 +116,9 @@ object RootBuild extends Build {
     "org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit) changing(),
     "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit) changing(),
     "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit) changing(),
-    "com.univocity" % "univocity-parsers" % "1.5.5"
+    "com.univocity" % "univocity-parsers" % "1.5.5",
+    "org.apache.flink" % "flink-ml" % flinkVersion excludeAll(excludeJUnit) excludeAll(excludeBreeze) changing(),
+    "org.scalanlp" %% "breeze" % "0.11.2"
   )
 
   val scalaArtifacts = Seq("jline", "scala-compiler", "scala-library", "scala-reflect")
