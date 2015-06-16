@@ -15,7 +15,7 @@ class Table2DataSetRow(@transient ddf: DDF) extends ConvertFunction(ddf) {
       case x:Table=>
         val columns: List[Column] = ddf.getSchema.getColumns.toList
         val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo(columns)
-        val dataSet:DataSet[Row] = x.toSet(rowTypeInfo)
+        val dataSet:DataSet[Row] = x.toDataSet(rowTypeInfo)
         new Representation(dataSet, RepresentationHandler.DATASET_ROW.getTypeSpecsString)
     }
   }
