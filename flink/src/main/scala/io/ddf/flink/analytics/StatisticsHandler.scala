@@ -5,8 +5,8 @@ import java.{lang, util}
 
 import com.clearspring.analytics.stream.quantile.QDigest
 import io.ddf.DDF
-import io.ddf.analytics.AStatisticsSupporter.{FiveNumSummary, HistogramBin}
-import io.ddf.analytics.{AStatisticsSupporter, Summary}
+import io.ddf.analytics.AStatisticsSupporter.FiveNumSummary
+import io.ddf.analytics.{SimpleSummary, AStatisticsSupporter, Summary}
 import io.ddf.content.Schema.Column
 import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.utils.Misc
@@ -138,45 +138,6 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     Misc.collectCovariance(manager.getExecutionEnvironment,dataSet,xIndex,yIndex)
   }
 
-  override def getVectorHistogram(columnName: String, numBins: Int): util.List[HistogramBin] = {
-    val columnData = getDoubleColumn(columnName).get
-    val manager = this.getManager.asInstanceOf[FlinkDDFManager]
-
-    val max = columnData.reduce(_ max _).collect().head
-    val min = columnData.reduce(_ min _).collect().head
-
-    // Scala's built-in range has issues. See #SI-8782
-    def customRange(min: Double, max: Double, steps: Int): IndexedSeq[Double] = {
-      val span = max - min
-      Range.Int(0, steps - 1, 1).map(s => min + (s * span) / steps) :+ max
-    }
-
-    // Compute the minimum and the maximum
-    if (min.isNaN || max.isNaN || max.isInfinity || min.isInfinity) {
-      throw new UnsupportedOperationException(
-        "Histogram on either an empty DataSet or DataSet containing +/-infinity or NaN")
-    }
-    val range = if (min != max) {
-      // Range.Double.inclusive(min, max, increment)
-      // The above code doesn't always work. See Scala bug #SI-8782.
-      // https://issues.scala-lang.org/browse/SI-8782
-      customRange(min, max, numBins)
-    } else {
-      List(min, min)
-    }
-
-    val buckets: Array[java.lang.Double] = range.toArray.map(i => Double.box(i))
-    val bins: util.List[HistogramBin] = new util.ArrayList[HistogramBin]()
-    val histograms = Misc.collectHistogram(manager.getExecutionEnvironment, columnData, buckets)
-    histograms.foreach { entry =>
-      val bin: AStatisticsSupporter.HistogramBin = new AStatisticsSupporter.HistogramBin
-      bin.setX(entry._1)
-      bin.setY(entry._2.toDouble)
-      bins.add(bin)
-    }
-    bins
-  }
-
   override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = {
     //TODO check for a better way - this implementation involves conversion from double to long and then long to double
     val maybeDataSet: Option[DataSet[Double]] = getDoubleColumn(columnName)
@@ -199,6 +160,9 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
         }
     }
   }
+
+  //TODO
+  override protected def getSimpleSummaryImpl: Array[SimpleSummary] = ???
 }
 
 
