@@ -12,6 +12,9 @@ public interface ISupportStatistics extends IHandleDDFFunctionalGroup {
 
   public Summary[] getSummary() throws DDFException;
 
+  //get min/max for numeric columns, list of distinct values for categorical columns
+  public SimpleSummary[] getSimpleSummary() throws DDFException;
+
   public FiveNumSummary[] getFiveNumSummary(List<String> columnNames) throws DDFException;
 
   // public Double[] getVectorQuantiles(Double[] percentiles) throws DDFException;
@@ -26,7 +29,7 @@ public interface ISupportStatistics extends IHandleDDFFunctionalGroup {
 
   public double getVectorCovariance(String xColumnName, String yColumnName) throws DDFException;
 
-  public List<HistogramBin> getVectorHistogram(String columnName, int numBins) throws DDFException;
+  //public List<HistogramBin> getVectorHistogram(String columnName, int numBins) throws DDFException;
 
   public Double getVectorMin(String columnName) throws DDFException;
 
