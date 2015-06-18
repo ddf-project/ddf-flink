@@ -33,7 +33,7 @@ class SqlHandlerSpec extends BaseSpec {
     val ddf = airlineDDF
     val ddf1 = ddf.sql2ddf("select Year,Month from airline")
     val table = ddf1.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
-    val collection: Seq[Row] = table.toSet[Row].collect()
+    val collection: Seq[Row] = table.collect()
     val list = collection.asJava
     println(list)
     list.get(0).productArity should be(2)
@@ -44,7 +44,7 @@ class SqlHandlerSpec extends BaseSpec {
     val ddf = airlineDDF
     val ddf1 = ddf.sql2ddf("select Year,Month from airline where Year > 2008 AND Month > 1")
     val table = ddf1.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
-    val collection: Seq[Row] = table.toSet[Row].collect()
+    val collection: Seq[Row] = table.collect()
     val list = collection.asJava
     println(list)
     list.size should be(1)

@@ -34,6 +34,7 @@ $FWDIR/spark/conf/local/ddf-env.sh
 EXAMPLES_DIR="$FWDIR"/examples
 
 SHELL_JAR="$FWDIR"/bin/jline2.jar:"$FWDIR"/bin/jshell.jar
+FLINK_JAR="$FWDIR"/flink/target/scala-2.10/*:"$FWDIR"/lib_managed/jars/*
 MAIN_CLASS="bsh.Interpreter"
 CONSOLE_CLASS="jline.console.internal.ConsoleRunner"
 #SPARK_INIT="$FWDIR"/bin/spark-init.bsh
@@ -63,7 +64,7 @@ export JAVA_OPTS+=" -Dhive.metastore.warehouse.dir=${HIVE_WAREHOUSE}"
 export JAVA_OPTS+=" -Dlog4j.configuration=ddf-local-log4j.properties"
 
 CLASSPATH="$EXAMPLES_DIR"/target/scala-2.10/lib/*
-CLASSPATH="$SHELL_JAR:$CLASSPATH:$FWDIR/core/conf/local/"
+CLASSPATH="$SHELL_JAR:$CLASSPATH:$FWDIR/core/conf/local/:$FLINK_JAR"
 #echo $CLASSPATH
 
 exec "$RUNNER" $JAVA_OPTS -cp "$CLASSPATH" $CONSOLE_CLASS "$MAIN_CLASS"
