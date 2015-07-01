@@ -5,7 +5,8 @@ import java.util.Collections
 
 import io.ddf.DDF
 import io.ddf.content.Schema
-import io.ddf.content.Schema.{Column, DataFormat}
+import io.ddf.content.Schema.Column
+import io.ddf.datasource.DataFormat
 import io.ddf.etl.ASqlHandler
 import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.content.{RepresentationHandler, Column2RowTypeInfo}
@@ -168,7 +169,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
   override def sql2ddf(command: String, schema: Schema, dataSource: String, dataFormat: DataFormat): DDF = sql2ddf(command)
 
-  override def sql2txt(command: String): util.List[String] = {
+  override def sql(command: String): util.List[String] = {
     val fn = parse(command)
     fn match {
       case c: Create =>
@@ -188,9 +189,9 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     }
   }
 
-  override def sql2txt(command: String, maxRows: Integer): util.List[String] = sql2txt(command)
+  override def sql(command: String, maxRows: Integer): util.List[String] = sql(command)
 
-  override def sql2txt(command: String, maxRows: Integer, dataSource: String): util.List[String] = sql2txt(command)
+  override def sql(command: String, maxRows: Integer, dataSource: String): util.List[String] = sql(command)
 
   val dsrTypeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
   val tTypeSpecs: Array[Class[_]] = Array(classOf[Table])

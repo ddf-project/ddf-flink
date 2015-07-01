@@ -79,8 +79,10 @@ object RepresentationHandler {
             row.setField(idx, colValue)
           case ColumnType.INT =>
             row.setField(idx, Try(colValue.toInt).getOrElse(if(useDefaults) 0 else null))
+/*
           case ColumnType.LONG =>
             row.setField(idx, Try(colValue.toLong).getOrElse(if(useDefaults) 0 else null))
+*/
           case ColumnType.FLOAT =>
             row.setField(idx, Try(colValue.toFloat).getOrElse(if(useDefaults) 0 else null))
           case ColumnType.DOUBLE =>
@@ -89,7 +91,7 @@ object RepresentationHandler {
             row.setField(idx, Try(colValue.toDouble).getOrElse(if(useDefaults) 0 else null))
           case ColumnType.TIMESTAMP =>
             row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(new Date(0)))
-          case ColumnType.LOGICAL =>
+          case ColumnType.BOOLEAN =>
             row.setField(idx, Try(colValue.toBoolean).getOrElse(if(useDefaults) false else null))
         }
     }
