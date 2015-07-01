@@ -23,6 +23,7 @@ import org.apache.spark.sql.catalyst.expressions.Row
 //  }
 //}
 
+// TODO review @huan
 trait RowToArray {
   def rowToArrayDouble(row: Row, columns: Array[Column]): Array[Double] = {
     var i = 0
@@ -33,10 +34,13 @@ trait RowToArray {
         isNull = true
       } else {
         array(i) = columns(i).getType match {
+          case ColumnType.TINYINT => row.getByte(i).toDouble
+          case ColumnType.SMALLINT => row.getShort(i).toDouble
           case ColumnType.INT => row.getInt(i).toDouble
+          case ColumnType.BIGINT => row.getLong(i).toDouble
           case ColumnType.FLOAT => row.getFloat(i).toDouble
           case ColumnType.DOUBLE => row.getDouble(i)
-          case ColumnType.LOGICAL => row.getBoolean(i) match {
+          case ColumnType.BOOLEAN => row.getBoolean(i) match {
             case true => 1.0
             case false => 0.0
           }

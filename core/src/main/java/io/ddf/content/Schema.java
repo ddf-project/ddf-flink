@@ -413,23 +413,29 @@ public class Schema implements Serializable {
 
 
   /**
-   * The R concept of a column "type", such as STRING, INT, LONG, etc.
+   * The R concept of a column "type", such as STRING, INT, BIGINT, etc.
    */
   public enum ColumnType {
-    STRING(String.class),
+    TINYINT(Byte.class),
+    SMALLINT(Short.class),
     INT(Integer.class),
-    LONG(Long.class),
+    BIGINT(Long.class),
     FLOAT(Float.class),
     DOUBLE(Double.class),
-    BIGINT(Long.class), //
-    TIMESTAMP(Date.class, java.sql.Date.class, Time.class, Timestamp.class),
-    STRUCT(Object.class),
+    DECIMAL(java.math.BigDecimal.class),
+    STRING(String.class),
+    BINARY(Byte[].class),
+    BOOLEAN(Boolean.class),
+    TIMESTAMP(java.sql.Timestamp.class),
+    DATE(java.sql.Date.class),
     ARRAY(scala.collection.Seq.class),
+    STRUCT(Objects.class),
+    //STRUCT(org.apache.spark.sql.Row.class), // TODO review
     MAP(scala.collection.Map.class),
     BLOB(Object.class), //
-    LOGICAL(Boolean.class),
     ANY(/* for ColumnClass.Factor */) //
     ;
+
 
     private List<Class<?>> mClasses = Lists.newArrayList();
 
@@ -484,10 +490,38 @@ public class Schema implements Serializable {
 
     public static boolean isNumeric(ColumnType colType) {
       switch (colType) {
+        case TINYINT:
+        case SMALLINT:
         case INT:
-        case LONG:
+        case BIGINT:
         case DOUBLE:
         case FLOAT:
+        case DECIMAL:
+          return true;
+
+        default:
+          return false;
+      }
+    }
+
+    public static boolean isIntegral(ColumnType colType) {
+      switch (colType) {
+        case TINYINT:
+        case SMALLINT:
+        case INT:
+        case BIGINT:
+         return true;
+
+        default:
+          return false;
+      }
+    }
+
+    public static boolean isFractional(ColumnType colType) {
+      switch (colType) {
+        case DOUBLE:
+        case FLOAT:
+        case DECIMAL:
           return true;
 
         default:
@@ -498,15 +532,14 @@ public class Schema implements Serializable {
 
 
   /**
-   * The R concept of a column class. A Column class of NUMERIC would be
-   * associate with any of the following types: LONG, FLOAT, DOUBLE.
+   * The R concept of a column class.
+   * // TODO review and update @huan @freeman @nhanitvn
    */
   public enum ColumnClass {
-    NUMERIC(ColumnType.LONG, ColumnType.FLOAT, ColumnType.DOUBLE), //
+    NUMERIC(ColumnType.TINYINT, ColumnType.SMALLINT, ColumnType.INT, ColumnType.BIGINT, ColumnType.FLOAT, ColumnType.DOUBLE, ColumnType.DECIMAL), //
     CHARACTER(ColumnType.STRING), //
-    LOGICAL(ColumnType.LOGICAL), //
-    FACTOR(ColumnType.ANY) //
-
+    LOGICAL(ColumnType.BOOLEAN), //
+    FACTOR(ColumnType.ANY) // ??
     ;
 
     private List<ColumnType> mTypes = Lists.newArrayList();
@@ -545,15 +578,6 @@ public class Schema implements Serializable {
       return null;
     }
   }
-
-
-  /**
-   *
-   */
-  public enum DataFormat {
-    SQL, CSV, TSV, JSON
-  }
-
 
   public static class DummyCoding implements Serializable {
     private HashMap<Integer, HashMap<String, java.lang.Double>> mapping = new HashMap<Integer, HashMap<String, java.lang.Double>>();
