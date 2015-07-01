@@ -66,7 +66,7 @@ object RootBuild extends Build {
   lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, flink, examples)
   lazy val core = Project("core", file("core"), settings = coreSettings)
   lazy val spark = Project("spark", file("spark"), settings = sparkSettings) dependsOn (core)
-  lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (spark) dependsOn (core)
+  lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (flink) dependsOn (spark) dependsOn (core)
   lazy val flink = Project("flink", file("flink"), settings = flinkSettings) dependsOn (core)
 
   // A configuration to set an alternative publishLocalConfiguration
@@ -618,8 +618,30 @@ object RootBuild extends Build {
     dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2",
     dependencyOverrides ++= Set("com.fasterxml.jackson.core" % "jackson-core" % "2.1.1",
       "com.fasterxml.jackson.core" % "jackson-databind" % "2.1.1",
-      "com.fasterxml.jackson.core" % "jackson-annotations" % "2.1.1")
-
+      "com.fasterxml.jackson.core" % "jackson-annotations" % "2.1.1"),
+    if(isLocal) {
+      initialCommands in console :=
+        s"""
+           |$getEnvCommand
+            |import io.ddf.DDFManager
+            |val manager = DDFManager.get("flink")
+            |manager.sql2txt("create table airline (Year int,Month int,DayofMonth int,DayOfWeek int, " +
+            |"aDepTime int,CRSDepTime int,ArrTime int,CRSArrTime int,UniqueCarrier string, " +
+            |"FlightNum int, TailNum string, ActualElapsedTime int, CRSElapsedTime int, AirTime int, " +
+            |"ArrDelay int, DepDelay int, Origin string, Dest string, Distance int, TaxiIn int, TaxiOut int, " +
+            |"Cancelled int, CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, " +
+            |"NASDelay int, SecurityDelay int, LateAircraftDelay int )")
+            |manager.sql2txt("load 'resources/test/airlineBig.csv' into airline")
+            |println("FlinkDDFManager available as manager")""".stripMargin
+    } else {
+      initialCommands in console :=
+        s"""
+           |$getEnvCommand
+            |import io.ddf.DDFManager
+            |val manager = DDFManager.get("flink")
+            |println("FlinkDDFManager available as manager")
+           """.stripMargin
+    }
   ) ++ assemblySettings ++ extraAssemblySettings
 
 
