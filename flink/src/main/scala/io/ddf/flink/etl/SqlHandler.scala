@@ -4,7 +4,7 @@ import java.util
 import java.util.Collections
 
 import io.ddf.DDF
-import io.ddf.content.Schema
+import io.ddf.content.{SqlResult, Schema}
 import io.ddf.content.Schema.Column
 import io.ddf.datasource.DataFormat
 import io.ddf.etl.ASqlHandler
@@ -169,31 +169,37 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
   override def sql2ddf(command: String, schema: Schema, dataSource: String, dataFormat: DataFormat): DDF = sql2ddf(command)
 
-  override def sql(command: String): util.List[String] = {
+  def sql2List(command: String): (Schema,util.List[String]) = {
     val fn = parse(command)
     fn match {
       case c: Create =>
         val ddf = create2ddf(c)
         this.getManager.addDDF(ddf)
-        Collections.singletonList("0")
+        (ddf.getSchema,Collections.singletonList("0"))
 
       case l: Load =>
         val ddf = load2ddf(l)
         val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
-        Collections.singletonList("0")//seqAsJavaList(table.collect().map(_.toString()))
+        (ddf.getSchema,Collections.singletonList("0"))//seqAsJavaList(table.collect().map(_.toString()))
 
       case s: Select =>
         val ddf = select2ddf(theDDF,s)
         val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
-        seqAsJavaList(table.collect().map(_.toString()))
+        (ddf.getSchema,seqAsJavaList(table.collect().map(_.toString())))
     }
   }
 
-  override def sql(command: String, maxRows: Integer): util.List[String] = sql(command)
-
-  override def sql(command: String, maxRows: Integer, dataSource: String): util.List[String] = sql(command)
 
   val dsrTypeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
   val tTypeSpecs: Array[Class[_]] = Array(classOf[Table])
   val dsoTypeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
+
+  override def sql(command: String): SqlResult = {
+    val res = sql2List(command)
+    new SqlResult(res._1,res._2)
+  }
+
+  override def sql(command: String, maxRows: Integer): SqlResult = sql(command)
+
+  override def sql(command: String, maxRows: Integer, dataSource: String): SqlResult = sql(command)
 }
