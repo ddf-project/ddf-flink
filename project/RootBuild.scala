@@ -109,15 +109,15 @@ object RootBuild extends Build {
   )
 
   val apache_flink_snapshots = Seq(
-    "org.apache.flink" % "flink-core" % flinkVersion excludeAll(excludeJUnit) changing(),
-    "org.apache.flink" % "flink-java" % flinkVersion excludeAll(excludeJUnit) changing(),
-    "org.apache.flink" % "flink-scala" % flinkVersion excludeAll(excludeJUnit) changing(),
-    "org.apache.flink" % "flink-clients" % flinkVersion excludeAll(excludeJUnit) changing(),
-    "org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit) changing(),
-    "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit) changing(),
-    "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit) changing(),
+    "org.apache.flink" % "flink-core" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-java" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-scala" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-clients" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-table" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit),
+    "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit),
     "com.univocity" % "univocity-parsers" % "1.5.5",
-    "org.apache.flink" % "flink-ml" % flinkVersion excludeAll(excludeJUnit) excludeAll(excludeBreeze) changing(),
+    "org.apache.flink" % "flink-ml" % flinkVersion excludeAll(excludeJUnit) excludeAll(excludeBreeze),
     "org.scalanlp" %% "breeze" % "0.11.2"
   )
 
