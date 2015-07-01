@@ -117,7 +117,7 @@ object RootBuild extends Build {
     "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit),
     "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit),
     "com.univocity" % "univocity-parsers" % "1.5.5",
-    "org.apache.flink" % "flink-ml" % flinkVersion excludeAll(excludeJUnit) excludeAll(excludeBreeze),
+    "org.apache.flink" % "flink-ml" % flinkVersion excludeAll(excludeJUnit) excludeAll(excludeBreeze) changing(),
     "org.scalanlp" %% "breeze" % "0.11.2"
   )
 
@@ -319,6 +319,25 @@ object RootBuild extends Build {
         <build>
           <directory>${{basedir}}/{targetDir}</directory>
           <plugins>
+            <plugin>
+              <groupId>org.scalatest</groupId>
+              <artifactId>scalatest-maven-plugin</artifactId>
+              <version>1.0</version>
+              <configuration>
+                <reportsDirectory>${{basedir}}/target/surefire-reports</reportsDirectory>
+                <junitxml>.</junitxml>
+                <filereports>TestSuite.txt</filereports>
+                <argLine>-Xmx2048m</argLine>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>test</id>
+                  <goals>
+                    <goal>test</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
             <plugin>
               <!-- Let SureFire know where the jars are -->
               <groupId>org.apache.maven.plugins</groupId>

@@ -6,6 +6,7 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.flink.content.RepresentationHandler
 import io.ddf.flink.utils.Utils
+import io.ddf.misc.Config
 import io.ddf.{DDF, DDFManager}
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
 import org.apache.flink.api.table.Row
@@ -14,7 +15,7 @@ import scala.collection.JavaConverters._
 
 class FlinkDDFManager extends DDFManager {
 
-  private val flinkExecutionEnvironment: ExecutionEnvironment = ExecutionEnvironment.getExecutionEnvironment
+  private val flinkExecutionEnvironment: ExecutionEnvironment = createExecutionEnvironment
 
   private final val logger = LoggerFactory.getLogger(getClass)
 
@@ -70,6 +71,17 @@ class FlinkDDFManager extends DDFManager {
 
     samples.zipWithIndex.map {
       case (col, i) => new Schema.Column(headers(i), Utils.determineType(col, doPreferDouble, false))
+    }
+  }
+
+  private def createExecutionEnvironment:ExecutionEnvironment = {
+    val isLocal = java.lang.Boolean.parseBoolean(Config.getValue(Config.ConfigConstant.ENGINE_NAME_FLINK.toString,"local"))
+    if(isLocal) ExecutionEnvironment.getExecutionEnvironment
+    else {
+      val host = Config.getValue(Config.ConfigConstant.ENGINE_NAME_FLINK.toString,"host")
+      val port = java.lang.Integer.parseInt(Config.getValue(Config.ConfigConstant.ENGINE_NAME_FLINK.toString,"port"))
+      val parallelism = java.lang.Integer.parseInt(Config.getValue(Config.ConfigConstant.ENGINE_NAME_FLINK.toString,"parallelism"))
+      ExecutionEnvironment.createRemoteEnvironment(host,port,parallelism)
     }
   }
 }
