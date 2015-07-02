@@ -61,12 +61,12 @@ object RootBuild extends Build {
   val examplesTestJarName = examplesProjectName + "-" + rootVersion + "-tests.jar"
 
   val flinkProjectName = "ddf_flink"
-  val flinkVersion = "0.9-SNAPSHOT"
+  val flinkVersion = "0.9.0"
 
   lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, flink, examples)
   lazy val core = Project("core", file("core"), settings = coreSettings)
   lazy val spark = Project("spark", file("spark"), settings = sparkSettings) dependsOn (core)
-  lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (flink) dependsOn (spark) dependsOn (core)
+  lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (spark) dependsOn (core)
   lazy val flink = Project("flink", file("flink"), settings = flinkSettings) dependsOn (core)
 
   // A configuration to set an alternative publishLocalConfiguration
