@@ -66,7 +66,7 @@ object RootBuild extends Build {
   lazy val root = Project("root", file("."), settings = rootSettings) aggregate(core, spark, flink, examples)
   lazy val core = Project("core", file("core"), settings = coreSettings)
   lazy val spark = Project("spark", file("spark"), settings = sparkSettings) dependsOn (core)
-  lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (spark) dependsOn (core)
+  lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (flink) dependsOn (spark) dependsOn (core)
   lazy val flink = Project("flink", file("flink"), settings = flinkSettings) dependsOn (core)
 
   // A configuration to set an alternative publishLocalConfiguration
@@ -117,7 +117,7 @@ object RootBuild extends Build {
     "org.apache.flink" % "flink-runtime" % flinkVersion excludeAll(excludeJUnit),
     "org.apache.flink" % "flink-optimizer" % flinkVersion excludeAll(excludeJUnit),
     "com.univocity" % "univocity-parsers" % "1.5.5",
-    "org.apache.flink" % "flink-ml" % flinkVersion excludeAll(excludeJUnit) excludeAll(excludeBreeze),
+    "org.apache.flink" % "flink-ml" % flinkVersion excludeAll(excludeJUnit) excludeAll(excludeBreeze) changing(),
     "org.scalanlp" %% "breeze" % "0.11.2"
   )
 
@@ -319,6 +319,25 @@ object RootBuild extends Build {
         <build>
           <directory>${{basedir}}/{targetDir}</directory>
           <plugins>
+            <plugin>
+              <groupId>org.scalatest</groupId>
+              <artifactId>scalatest-maven-plugin</artifactId>
+              <version>1.0</version>
+              <configuration>
+                <reportsDirectory>${{basedir}}/target/surefire-reports</reportsDirectory>
+                <junitxml>.</junitxml>
+                <filereports>TestSuite.txt</filereports>
+                <argLine>-Xmx2048m</argLine>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>test</id>
+                  <goals>
+                    <goal>test</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
             <plugin>
               <!-- Let SureFire know where the jars are -->
               <groupId>org.apache.maven.plugins</groupId>
@@ -599,8 +618,30 @@ object RootBuild extends Build {
     dependencyOverrides += "org.apache.commons" % "commons-math" % "2.2",
     dependencyOverrides ++= Set("com.fasterxml.jackson.core" % "jackson-core" % "2.1.1",
       "com.fasterxml.jackson.core" % "jackson-databind" % "2.1.1",
-      "com.fasterxml.jackson.core" % "jackson-annotations" % "2.1.1")
-
+      "com.fasterxml.jackson.core" % "jackson-annotations" % "2.1.1"),
+    if(isLocal) {
+      initialCommands in console :=
+        s"""
+           |$getEnvCommand
+            |import io.ddf.DDFManager
+            |val manager = DDFManager.get("flink")
+            |manager.sql2txt("create table airline (Year int,Month int,DayofMonth int,DayOfWeek int, " +
+            |"aDepTime int,CRSDepTime int,ArrTime int,CRSArrTime int,UniqueCarrier string, " +
+            |"FlightNum int, TailNum string, ActualElapsedTime int, CRSElapsedTime int, AirTime int, " +
+            |"ArrDelay int, DepDelay int, Origin string, Dest string, Distance int, TaxiIn int, TaxiOut int, " +
+            |"Cancelled int, CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, " +
+            |"NASDelay int, SecurityDelay int, LateAircraftDelay int )")
+            |manager.sql2txt("load 'resources/test/airlineBig.csv' into airline")
+            |println("FlinkDDFManager available as manager")""".stripMargin
+    } else {
+      initialCommands in console :=
+        s"""
+           |$getEnvCommand
+            |import io.ddf.DDFManager
+            |val manager = DDFManager.get("flink")
+            |println("FlinkDDFManager available as manager")
+           """.stripMargin
+    }
   ) ++ assemblySettings ++ extraAssemblySettings
 
 
