@@ -31,6 +31,10 @@ class RepresentationHandler(ddf: DDF) extends RH(ddf) {
   this.addConvertFunction(DATASET_ARR_DOUBLE, DATASET_LABELED_VECTOR, new ArrayDouble2LabeledVector(this.ddf))
   this.addConvertFunction(DATASET_ARR_DOUBLE, DATASET_VECTOR, new ArrayDouble2Vector(this.ddf))
   this.addConvertFunction(DATASET_LABELED_VECTOR, DATASET_ARR_DOUBLE, new LabeledVector2ArrayDouble(this.ddf))
+  this.addConvertFunction(DATASET_ARR_OBJECT, DATASET_TUPLE2, new ArrayObject2Tuple2(this.ddf))
+  this.addConvertFunction(DATASET_ARR_OBJECT, DATASET_TUPLE3, new ArrayObject2Tuple3(this.ddf))
+  this.addConvertFunction(DATASET_TUPLE2, DATASET_ARR_OBJECT, new Tuple2ToArrayObject(this.ddf))
+  this.addConvertFunction(DATASET_TUPLE3, DATASET_ARR_OBJECT, new Tuple3ToArrayObject(this.ddf))
 }
 
 object RepresentationHandler {
@@ -49,13 +53,15 @@ object RepresentationHandler {
 
   val DATASET_LABELED_VECTOR = new Representation(classOf[DataSet[_]], classOf[LabeledVector])
   val DATASET_VECTOR = new Representation(classOf[DataSet[_]], classOf[FVector])
+  val DATASET_TUPLE2 = new Representation(classOf[DataSet[_]], classOf[Tuple2[_, _ ]], classOf[Int], classOf[Int])
+  val DATASET_TUPLE3 = new Representation(classOf[DataSet[_]], classOf[Tuple3[_,_,_]], classOf[Int], classOf[Int], classOf[Double])
 
   private val dateFormat = new SimpleDateFormat()
 
-  def getRowDataSet(dataSet: DataSet[_], columns: List[Column], useDefaults:Boolean=true): DataSet[Row] = {
+  def getRowDataSet(dataSet: DataSet[_], columns: List[Column], useDefaults: Boolean = true): DataSet[Row] = {
     val idxColumns: Seq[(Column, Int)] = columns.zipWithIndex.toSeq
     implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo(columns)
-    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns,useDefaults))
+    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns, useDefaults))
     rowDataSet
   }
 
@@ -69,7 +75,7 @@ object RepresentationHandler {
     }
   }
 
-  private def parseRow(rowArray: Array[Object], idxColumns: Seq[(Column, Int)],useDefaults:Boolean): Row = {
+  private def parseRow(rowArray: Array[Object], idxColumns: Seq[(Column, Int)], useDefaults: Boolean): Row = {
     val row = new Row(idxColumns.length)
     idxColumns foreach {
       case (col, idx) =>
@@ -78,21 +84,21 @@ object RepresentationHandler {
           case ColumnType.STRING =>
             row.setField(idx, colValue)
           case ColumnType.INT =>
-            row.setField(idx, Try(colValue.toInt).getOrElse(if(useDefaults) 0 else null))
-/*
-          case ColumnType.LONG =>
-            row.setField(idx, Try(colValue.toLong).getOrElse(if(useDefaults) 0 else null))
-*/
+            row.setField(idx, Try(colValue.toInt).getOrElse(if (useDefaults) 0 else null))
+          /*
+                    case ColumnType.LONG =>
+                      row.setField(idx, Try(colValue.toLong).getOrElse(if(useDefaults) 0 else null))
+          */
           case ColumnType.FLOAT =>
-            row.setField(idx, Try(colValue.toFloat).getOrElse(if(useDefaults) 0 else null))
+            row.setField(idx, Try(colValue.toFloat).getOrElse(if (useDefaults) 0 else null))
           case ColumnType.DOUBLE =>
-            row.setField(idx, Try(colValue.toDouble).getOrElse(if(useDefaults) 0 else null))
+            row.setField(idx, Try(colValue.toDouble).getOrElse(if (useDefaults) 0 else null))
           case ColumnType.BIGINT =>
-            row.setField(idx, Try(colValue.toDouble).getOrElse(if(useDefaults) 0 else null))
+            row.setField(idx, Try(colValue.toDouble).getOrElse(if (useDefaults) 0 else null))
           case ColumnType.TIMESTAMP =>
             row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(new Date(0)))
           case ColumnType.BOOLEAN =>
-            row.setField(idx, Try(colValue.toBoolean).getOrElse(if(useDefaults) false else null))
+            row.setField(idx, Try(colValue.toBoolean).getOrElse(if (useDefaults) false else null))
         }
     }
     row
@@ -100,3 +106,5 @@ object RepresentationHandler {
 
 
 }
+
+

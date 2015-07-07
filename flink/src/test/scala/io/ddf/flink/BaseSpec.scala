@@ -1,6 +1,5 @@
 package io.ddf.flink
 
-import io.ddf.etl.IHandleMissingData.Axis
 import io.ddf.{DDF, DDFManager}
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -107,8 +106,23 @@ class BaseSpec extends FlatSpec with Matchers {
 
   def loadRegressionTest(): DDF = {
     val train = flinkDDFManager.getDDFByName("regression_data")
-    //train.sql2ddf("SELECT petal, septal FROM iris WHERE flower = 1.0000")
     train.VIEWS.project("col2")
   }
 
+  def loadRatingsTrain(): DDF = {
+    try {
+      flinkDDFManager.getDDFByName("user_ratings")
+    } catch {
+      case e: Exception =>
+        flinkDDFManager.sql("create table user_ratings (user_id int, item_id int,rating double)")
+        val filePath = getClass.getResource("/ratings.csv").getPath
+        flinkDDFManager.sql("load '" + filePath + "' into user_ratings")
+        flinkDDFManager.getDDFByName("user_ratings")
+    }
+  }
+
+  def loadRatingsTest(): DDF = {
+    val train = flinkDDFManager.getDDFByName("user_ratings")
+    train.VIEWS.project("user_id", "item_id")
+  }
 }

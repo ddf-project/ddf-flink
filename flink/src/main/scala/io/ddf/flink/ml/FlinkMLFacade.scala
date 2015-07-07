@@ -90,5 +90,29 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
     this.train("mlr", paramMap)
   }
 
+  def als(numFactors: Option[Int] = None,
+          lambda: Option[Double] = None,
+          iterations: Option[Int] = None,
+          blocks: Option[Int] = None,
+          seed: Option[Long] = None,
+          temporaryPath: Option[String] = None): IModel = {
+
+    import org.apache.flink.ml.recommendation.ALS
+
+    val paramMap = {
+      val pmap = new ParameterMap()
+      blocks.map(b => pmap.add(ALS.Blocks, b))
+
+      numFactors.map(i => pmap.add(ALS.NumFactors, i))
+      lambda.map(i => pmap.add(ALS.Lambda, i))
+      iterations.map(i => pmap.add(ALS.Iterations, i))
+      seed.map(s => pmap.add(ALS.Seed, s))
+      temporaryPath.map(p => pmap.add(ALS.TemporaryPath, p))
+
+      pmap
+    }
+
+    this.train("als", paramMap)
+  }
 
 }
