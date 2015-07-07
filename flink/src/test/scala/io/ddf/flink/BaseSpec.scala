@@ -93,4 +93,22 @@ class BaseSpec extends FlatSpec with Matchers {
     ddf
   }
 
+  def loadRegressionTrain(): DDF = {
+    try {
+      flinkDDFManager.getDDFByName("regression_data")
+    } catch {
+      case e: Exception =>
+        flinkDDFManager.sql("create table regression_data (col1 double, col2 double)")
+        val filePath = getClass.getResource("/regressionData.csv").getPath
+        flinkDDFManager.sql("load '" + filePath + "' into regression_data")
+        flinkDDFManager.getDDFByName("regression_data")
+    }
+  }
+
+  def loadRegressionTest(): DDF = {
+    val train = flinkDDFManager.getDDFByName("regression_data")
+    //train.sql2ddf("SELECT petal, septal FROM iris WHERE flower = 1.0000")
+    train.VIEWS.project("col2")
+  }
+
 }

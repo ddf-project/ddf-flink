@@ -46,11 +46,6 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
     iddf = theDDF
   }
 
-  def multipleLinearRegression(): DDF = {
-    val model = this.train("multipleLinearRegression")
-    this.applyModel(model)
-  }
-
   def svm(blocks: Option[Int] = None,
           iterations: Option[Int] = None,
           localIterations: Option[Int] = None,
@@ -74,6 +69,25 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
     }
 
     this.train("svm", paramMap)
+  }
+
+  def mlr(iterations: Option[Int] = None,
+          stepsize: Option[Double] = None,
+          convergenceThreshold: Option[Double] = None): IModel = {
+
+    import org.apache.flink.ml.regression.MultipleLinearRegression
+
+    val paramMap = {
+      val pmap = new ParameterMap()
+
+      iterations.map(i => pmap.add(MultipleLinearRegression.Iterations, i))
+      stepsize.map(ss => pmap.add(MultipleLinearRegression.Stepsize, ss))
+      convergenceThreshold.map(s => pmap.add(MultipleLinearRegression.ConvergenceThreshold, s))
+
+      pmap
+    }
+
+    this.train("mlr", paramMap)
   }
 
 
