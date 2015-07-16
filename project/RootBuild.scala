@@ -67,6 +67,8 @@ object RootBuild extends Build {
   lazy val core = Project("core", file("core"), settings = coreSettings)
   lazy val spark = Project("spark", file("spark"), settings = sparkSettings) dependsOn (core)
   lazy val examples = Project("examples", file("examples"), settings = examplesSettings) dependsOn (spark) dependsOn (core)
+  lazy val flinkExampleSettings: Seq[Def.Setting[_]] = examplesSettings ++ Seq(name := "flink-examples")
+  lazy val flinkExamples = Project("flink-examples", file("flink-examples"), settings = flinkExampleSettings) dependsOn (flink) dependsOn (core)
   lazy val flink = Project("flink", file("flink"), settings = flinkSettings) dependsOn (core)
 
   // A configuration to set an alternative publishLocalConfiguration
@@ -162,7 +164,7 @@ object RootBuild extends Build {
   val flink_dependencies = Seq(
     "org.apache.hadoop" % "hadoop-mapreduce-client-core" % "2.2.0" exclude("asm", "asm"),
     "net.sf.squirrel-sql.thirdparty-non-maven" % "java-cup" % "0.11a" exclude("asm", "asm"),
-    "com.clearspring.analytics" % "stream" % "2.4.0"  exclude("asm","asm"),
+    "com.clearspring.analytics" % "stream" % "2.9.0"  exclude("asm","asm"),
     "org.apache.commons" % "commons-math3" % "3.5"
   )
 
@@ -251,7 +253,7 @@ object RootBuild extends Build {
                                 "com.fasterxml.jackson.core" % "jackson-databind" % "2.2.1",
                                 "com.fasterxml.jackson.core" % "jackson-annotations" % "2.2.1"),
     dependencyOverrides += "commons-lang" % "commons-lang" % "2.6",
-    dependencyOverrides += "it.unimi.dsi" % "fastutil" % "6.4.4",
+    dependencyOverrides += "it.unimi.dsi" % "fastutil" % "6.5.7",
     dependencyOverrides += "log4j" % "log4j" % "1.2.17",
     dependencyOverrides += "org.slf4j" % "slf4j-api" % slf4jVersion,
     dependencyOverrides += "org.slf4j" % "slf4j-log4j12" % slf4jVersion,
@@ -299,7 +301,7 @@ object RootBuild extends Build {
     dependencyOverrides += "com.sun.jersey" % "jersey-json" % "1.9",
     dependencyOverrides += "com.sun.jersey" % "jersey-server" % "1.9",
     dependencyOverrides += "org.scalamacros" % "quasiquotes_2.10" % "2.0.0",
-    dependencyOverrides += "com.clearspring.analytics" % "stream" % "2.4.0",
+    dependencyOverrides += "com.clearspring.analytics" % "stream" % "2.9.0",
     dependencyOverrides += "commons-httpclient" % "commons-httpclient" % "3.1",
     dependencyOverrides += "org.apache.avro" % "avro-mapred" % "1.7.6",
     dependencyOverrides += "commons-logging" % "commons-logging" % "1.1.3",
@@ -653,7 +655,6 @@ object RootBuild extends Build {
       List("sh", "-c", "touch examples/" + targetDir + "/*timestamp")
     }
   ) ++ assemblySettings ++ extraAssemblySettings
-
 
   def extraAssemblySettings() = Seq(test in assembly := {}) ++ Seq(
     mergeStrategy in assembly := {
