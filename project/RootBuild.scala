@@ -582,15 +582,15 @@ object RootBuild extends Build {
         |$getEnvCommand
         |import io.ddf.DDFManager
         |val manager = DDFManager.get("spark")
-        |manager.sql2txt("drop table if exists airline")
-        |manager.sql2txt("create external table airline (Year int,Month int,DayofMonth int,DayOfWeek int, " +
+        |manager.sql("drop table if exists airline")
+        |manager.sql("create external table airline (Year int,Month int,DayofMonth int,DayOfWeek int, " +
         |"aDepTime int,CRSDepTime int,ArrTime int,CRSArrTime int,UniqueCarrier string, " +
         |"FlightNum int, TailNum string, ActualElapsedTime int, CRSElapsedTime int, AirTime int, " +
         |"ArrDelay int, DepDelay int, Origin string, Dest string, Distance int, TaxiIn int, TaxiOut int, " +
         |"Cancelled int, CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, " +
         |"NASDelay int, SecurityDelay int, LateAircraftDelay int ) " +
         |"ROW FORMAT DELIMITED FIELDS TERMINATED BY ','")
-        |manager.sql2txt("load data local inpath 'resources/test/airlineBig.csv' into table airline")
+        |manager.sql("load data local inpath 'resources/test/airlineBig.csv' into table airline")
         |println("SparkDDFManager available as manager")""".stripMargin
     } else {
       initialCommands in console :=
@@ -625,13 +625,13 @@ object RootBuild extends Build {
            |$getEnvCommand
             |import io.ddf.DDFManager
             |val manager = DDFManager.get("flink")
-            |manager.sql2txt("create table airline (Year int,Month int,DayofMonth int,DayOfWeek int, " +
+            |manager.sql("create table airline (Year int,Month int,DayofMonth int,DayOfWeek int, " +
             |"aDepTime int,CRSDepTime int,ArrTime int,CRSArrTime int,UniqueCarrier string, " +
             |"FlightNum int, TailNum string, ActualElapsedTime int, CRSElapsedTime int, AirTime int, " +
             |"ArrDelay int, DepDelay int, Origin string, Dest string, Distance int, TaxiIn int, TaxiOut int, " +
             |"Cancelled int, CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, " +
             |"NASDelay int, SecurityDelay int, LateAircraftDelay int )")
-            |manager.sql2txt("load 'resources/test/airlineBig.csv' into airline")
+            |manager.sql("load 'resources/test/airlineBig.csv' into airline")
             |println("FlinkDDFManager available as manager")""".stripMargin
     } else {
       initialCommands in console :=

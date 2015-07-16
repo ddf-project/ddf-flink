@@ -33,6 +33,7 @@ DDFManager <- function(engine="spark") {
 #' @export
 setGeneric("sql",
            function(x, sql, ...) {
+             print("test")
              standardGeneric("sql")
            }
 )
@@ -43,7 +44,7 @@ setMethod("sql",
           function(x, sql) {
             sql <- str_trim(sql)
             jdm <- x@jdm
-            java_ret <- jdm$sql2txt(sql)
+            java_ret <- jdm$sql(sql)
             sapply(java_ret, function(x) {x$toString()})
           }
 )
