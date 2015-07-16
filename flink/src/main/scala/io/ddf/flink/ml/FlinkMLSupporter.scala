@@ -13,6 +13,7 @@ import org.apache.flink.api.common.functions.{ReduceFunction, MapFunction}
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.ml.common.ParameterMap
 import org.apache.flink.ml.pipeline.{Estimator, Predictor}
+import org.apache.flink.api.scala._
 
 import scala.reflect.api.JavaUniverse
 
@@ -77,7 +78,7 @@ class FlinkMLSupporter(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IS
         result(isPos << 1 | predPos) = 1L
         result
       }
-    }).reduce(new ReduceFunction[Array[Long], Array[Long], Array[Long]]() {
+    }).reduce(new ReduceFunction[Array[Long]]() {
       override def reduce(a: Array[Long], b: Array[Long]): Array[Long] = {
         Array[Long](a(0) + b(0), a(1) + b(1), a(2) + b(2), a(3) + b(3))
       }
