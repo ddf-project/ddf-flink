@@ -1,6 +1,6 @@
 import Common._
 
-name := "ddf"
+name := "ddf-flink-root"
 
 organization := "io.ddf"
 

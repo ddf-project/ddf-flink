@@ -41,16 +41,6 @@ function Run() {
 
 
   echo "
-  #***************************************************************************************
-  #Re-installing the unmanaged libs in ~/.m2 and ~/.ivy2
-  #***************************************************************************************
-  #"
-  #rm -fr ~/.m2/repository/{adatao,org/spark-project,edu/berkeley}
-  #rm -fr ~/.ivy2/{cache,local}/{adatao.*,org.spark-project,edu.berkeley.*}
-  spark/lib/mvn-install-jars.sh || Error "mvn-install-jars.sh failed"
-
-
-  echo "
   ***************************************************************************************
   Running one time 'sbt clean package eclipse' to generate .classpath and .project files
   ***************************************************************************************
