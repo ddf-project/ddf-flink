@@ -55,7 +55,7 @@ class BaseSpec extends FlatSpec with Matchers {
       case e: Exception =>
         flinkDDFManager.sql("create table airlineWithNA (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )")
         val filePath = getClass.getResource("/airlineWithNA.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' NO DEFAULTS into airlineWithNA")
+        flinkDDFManager.sql("load '" + filePath + "' WITH NULL '' NO DEFAULTS into airlineWithNA")
         ddf = flinkDDFManager.getDDFByName("airlineWithNA")
     }
     ddf

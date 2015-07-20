@@ -3,12 +3,15 @@ package io.ddf.flink.content
 import java.util.Date
 
 import io.ddf.content.Schema.{Column, ColumnType}
+import io.ddf.flink.utils.RowSerializer
+import org.apache.flink.api.common.ExecutionConfig
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo
+import org.apache.flink.api.common.typeutils.TypeSerializer
 import org.apache.flink.api.java.typeutils.{ObjectArrayTypeInfo, TupleTypeInfo}
 import org.apache.flink.api.scala.typeutils.CaseClassTypeInfo
 import org.apache.flink.api.table.Row
 import org.apache.flink.api.table.expressions.{Expression, ResolvedFieldReference}
-import org.apache.flink.api.table.typeinfo.RowTypeInfo
+import org.apache.flink.api.table.typeinfo.{RowTypeInfo}
 import org.apache.flink.api.scala._
 
 object Column2RowTypeInfo extends Serializable {
@@ -29,7 +32,17 @@ object Column2RowTypeInfo extends Serializable {
         }
         ResolvedFieldReference(col.getName, fieldType)
     }
-    new RowTypeInfo(fields)
+    new RowTypeInfo(fields){
+      override def createSerializer(executionConfig: ExecutionConfig): TypeSerializer[Row] = {
+        val fieldSerializers: Array[TypeSerializer[Any]] = new Array[TypeSerializer[Any]](getArity)
+        for (i <- 0 until getArity) {
+          fieldSerializers(i) = this.types(i).createSerializer(executionConfig)
+            .asInstanceOf[TypeSerializer[Any]]
+        }
+
+        new RowSerializer(fieldSerializers)
+      }
+    }
   }
 
   def getColumns(rowTypeInfo: CaseClassTypeInfo[Row]): Seq[Column] = {
