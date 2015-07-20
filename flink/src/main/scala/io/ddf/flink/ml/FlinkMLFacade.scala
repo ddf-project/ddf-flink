@@ -28,15 +28,15 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
   }
 
   override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util.List[util.List[DDF]] = {
-    throw new UnsupportedOperationException("This method is not implemented on Flink DDF")
+    this.getMLSupporter.CVRandom(k, trainingSize, seed)
   }
 
   override def CVKFold(k: Int, seed: lang.Long): util.List[util.List[DDF]] = {
-    throw new UnsupportedOperationException("This method is not implemented on Flink DDF")
+    this.getMLSupporter.CVKFold(k, seed)
   }
 
   override def getConfusionMatrix(model: IModel, threshold: Double): Array[Array[Long]] = {
-    throw new UnsupportedOperationException("This method is not implemented on Flink DDF")
+    this.getMLSupporter.getConfusionMatrix(model, threshold)
   }
 
   override def getDDF: DDF = iddf
