@@ -24,7 +24,7 @@ import org.apache.flink.util.{AbstractID, Collector}
 
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
-import scala.util.{Random, Try}
+import scala.util.Try
 
 package object utils {
 
@@ -355,7 +355,7 @@ package object utils {
   class SerCsvParserSettings extends CsvParserSettings with Serializable
 
 
-  class StringArrayCsvInputFormat(filePath: Path, delimiter: Char, emptyValue: String) extends DelimitedInputFormat[Array[String]] {
+  class StringArrayCsvInputFormat(filePath: Path, delimiter: Char, emptyValue: String,nullValue:String) extends DelimitedInputFormat[Array[String]] {
     val charsetName = "UTF-8"
     val isFSV = delimiter == ' ' || delimiter == '\t'
 
@@ -372,6 +372,10 @@ package object utils {
       parserSettings.setIgnoreLeadingWhitespaces(false)
       parserSettings.setIgnoreTrailingWhitespaces(false)
       parserSettings.getFormat.setDelimiter(delimiter)
+      if (emptyValue != null)
+        parserSettings.setEmptyValue(emptyValue)
+      if (nullValue != null)
+        parserSettings.setNullValue(nullValue)
       new CsvParser(parserSettings)
     }
 

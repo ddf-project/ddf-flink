@@ -47,22 +47,11 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     }
   }
 
-  protected def load2ddf2(l: Load) = {
-    val ddf = this.getManager.getDDFByName(l.tableName)
-    val env = this.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
-    val dataSet = env
-      .readTextFile(l.url)
-      .map(_.split(",").map(_.asInstanceOf[Object]))
-
-    ddf.getRepresentationHandler.set(dataSet, dsoTypeSpecs: _*)
-    ddf
-  }
-
   protected def load2ddf(l: Load) = {
     val ddf = this.getManager.getDDFByName(l.tableName)
     val env = this.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
     val path = new Path(l.url)
-    val csvInputFormat = new StringArrayCsvInputFormat(path,l.delimiter,l.emptyValue)
+    val csvInputFormat = new StringArrayCsvInputFormat(path,l.delimiter,emptyValue = l.emptyValue,nullValue = l.nullValue)
     val dataSet:DataSet[Array[Object]] = env.readFile(csvInputFormat,l.url).map{ row=>
       row.map(_.asInstanceOf[Object])
     }
