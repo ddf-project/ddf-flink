@@ -18,7 +18,6 @@
 #
 
 SCALA_VERSION=2.10
-SPARK_VERSION=0.9
 
 FWDIR="$(cd `dirname $0`/..; pwd)"
 echo "Starting shell from "$FWDIR/bin 
@@ -29,15 +28,17 @@ sleep 0.3
 echo -ne "...            \r"
 echo -ne '\n'
 
-$FWDIR/spark/conf/local/ddf-env.sh
-
-EXAMPLES_DIR="$FWDIR"/examples
+EXAMPLES_DIR="$FWDIR"/flink-examples
 
 SHELL_JAR="$FWDIR"/bin/jline2.jar:"$FWDIR"/bin/jshell.jar
-FLINK_JAR="$FWDIR"/flink/target/scala-2.10/*:"$FWDIR"/lib_managed/jars/*
+
+DEPS_JARS=$(echo "$FWDIR"/lib_managed/jars/*/*/*.jar | tr ' ' ':')
+
+BUNDLE_JARS=$(echo "$FWDIR"/lib_managed/bundles/*/*/*.jar | tr ' ' ':')
+
+FLINK_JAR="$FWDIR"/flink/target/scala-2.10/*:$DEPS_JARS:$BUNDLE_JARS
 MAIN_CLASS="bsh.Interpreter"
 CONSOLE_CLASS="jline.console.internal.ConsoleRunner"
-#SPARK_INIT="$FWDIR"/bin/spark-init.bsh
 
 
 # Find java binary
