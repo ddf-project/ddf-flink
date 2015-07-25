@@ -1,15 +1,101 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <!--
+    ************************************************************************
+    This is the root-level pom.xml, which is referred to by all sub-projects.
+    Common settings/plugins, etc. go here.
+    ************************************************************************
+    -->
     <modelVersion>4.0.0</modelVersion>
-    <groupId>io.ddf</groupId>
-    <artifactId>ddf-flink-root_2.10</artifactId>
-    <packaging>jar</packaging>
-    <description>ddf-flink-root</description>
+    <groupId>io</groupId>
+    <artifactId>ddf</artifactId>
+    <packaging>pom</packaging>
+    <description>Distributed DataFrame</description>
     <version>1.2.0</version>
-    <name>ddf-flink-root</name>
+    <name>ddf</name>
     <organization>
         <name>io.ddf</name>
     </organization>
+    <url>http://ddf.io</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:git@github.com:ddf-project/DDF.git</connection>
+        <url>scm:git:git@github.com:ddf-project/DDF.git</url>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>ddf.io</id>
+            <name>DDF.io</name>
+            <email>ddf@adatao.com</email>
+            <url>http://ddf.io/</url>
+            <organization>DDF project</organization>
+            <organizationUrl>http://ddf.io/</organizationUrl>
+        </developer>
+    </developers>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>scala-tools.org</id>
+            <name>Scala-tools Maven2 Repository</name>
+            <url>http://scala-tools.org/repo-releases</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <modules>
+        <module>flink</module>
+        <module>flink-examples</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>3.1.5</version>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <goals><goal>compile</goal></goals><phase>compile</phase>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <goals><goal>testCompile</goal></goals><phase>test-compile</phase>
+                    </execution>
+                    <execution>
+                        <goals><goal>compile</goal></goals><phase>process-resources</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <recompileMode>incremental</recompileMode>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <!-- version>3.1</version -->
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>

@@ -1,12 +1,29 @@
 import Common._
 
-name := "ddf-flink-root"
-
 organization := "io.ddf"
+
+name := "ddf"
 
 version := ddfVersion
 
-scalaVersion := "2.10.4"
+retrieveManaged := true // Do create a lib_managed, so we have one place for all the dependency jars to copy to slaves, if needed
+
+scalaVersion := theScalaVersion
+
+scalacOptions := Seq("-unchecked", "-optimize", "-deprecation")
+
+// Fork new JVMs for tests and set Java options for those
+fork in Test := true
+
+parallelExecution in ThisBuild := false
+
+javaOptions in Test ++= Seq("-Xmx2g")
+
+concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)
+
+conflictManager := ConflictManager.strict
+
+commonSettings
 
 lazy val root = project.in(file(".")).aggregate(flink, flinkExamples)
 
@@ -17,10 +34,9 @@ val com_adatao_unmanaged = Seq(
   "com.adatao.unmanaged.net.rforge" % "Rserve" % "1.8.2.compiled"
 )
 
-lazy val flink = project.in(file("flink")).settings(
+lazy val flink = project.in(file("flink")).settings(commonSettings: _*).settings(
   name := "ddf-flink",
-  organization := "io.ddf",
-  version := ddfVersion,
+  pomExtra := submodulePom,
   libraryDependencies ++= Seq(
     "io.ddf" %% "ddf_core" % ddfVersion,
     "org.apache.flink" % "flink-core" % flinkVersion,
@@ -39,11 +55,12 @@ lazy val flink = project.in(file("flink")).settings(
   ) ++ com_adatao_unmanaged
 )
 
-lazy val flinkExamples = project.in(file("flink-examples")).dependsOn(flink).settings(
+lazy val flinkExamples = project.in(file("flink-examples")).dependsOn(flink).settings(commonSettings: _*).settings(
   name := "flink-examples",
-  organization := "io.ddf",
-  version := ddfVersion
+  pomExtra := submodulePom
 )
 
 resolvers ++= Seq("Adatao Mvnrepos Snapshots" at "https://raw.github.com/adatao/mvnrepos/master/snapshots",
   "Adatao Mvnrepos Releases" at "https://raw.github.com/adatao/mvnrepos/master/releases")
+
+publishMavenStyle := true

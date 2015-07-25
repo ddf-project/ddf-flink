@@ -15,8 +15,6 @@ TARGET_DIR=target
 # Project list is heuristically determined to be those dirs that have src/main/ under them
 PROJECTS=(`echo */src/main | sed -e 's/\/src\/main//g'`)
 
-PROJECTS+=(".")
-
 for project in ${PROJECTS[*]} ; do
   # find the latest *.pom under $TARGET_DIR
   pom=`find $project/target -type f -name *.pom -exec ls -l {} \; 2> /dev/null | sort -t' ' -k +6,6 -k +7,7 -k+8,8 | tail -1 | sed -e 's/.* //g'`
