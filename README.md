@@ -1,3 +1,7 @@
+DDF with Flink
+===
+This project depends on DDF and uses Apache Flink engine.
+
 DDF
 ===
 
@@ -12,90 +16,62 @@ For Big Data Scientists & Engineers
 
 * [Questions/Comments/Feature Requests](https://groups.google.com/forum/#!forum/ddf-project)
 
-# DDF - Distributed DataFrame 
-
-DDF aims to make Big Data easy yet powerful, by bringing together
-the best ideas from R Data Science, RDBMS/SQL, and Big Data distributed
-processing.
-
-It exposes high-level abstractions like RDBMS tables,
-SQL queries, data cleansing and transformations, machine-learning
-algorithms, even collaboration and authentication, etc., while
-hiding all the complexities of parallel distributed processing
-and data handling.
-
-DDF is a general abstraction that can be implemented on multiple
-execution and data engines. We are providing a native implementation
-on Apache Spark, as it is today the most expressive in its DAG
-parallelization and also most powerful in its in-memory distributed
-dataset abstraction (RDD). With this release, DDF provides native
-Spark support for R, Python, Java, Scala.
-
-An aim of the DDF project is to shine a focus of Big Data conversations
-on top-down, user-focussed simplicity and power, where "users" include
-business analysts, data scientists, and high-level Big Data engineers.
-
 ---
-
-### Directory Structure
-
-| Directory | Description |
-|-----------|-------------|
-| bin | useful helper scripts |
-| exe | DDF execution/launch scripts and executables |
-| conf | DDF configuration files |
-| R | DDF in R |
-| python | DDF in python |
-| core | DDF core API |
-| spark | DDF Spark implementation |
-| examples | DDF example API-user code |
-| project | Scala build config files |
 
 ### Getting Started
 
-First clone or fork a copy of DDF, e.g.:
+This project depends on DDF and requires its installation to run.
+
+Before installing DDF, update line#482 in project/RootBuild.scala to,
+```
+  ),
+
+publishArtifact in (Compile, packageDoc) := false
+```
+This is to avoid the error in publishing docs through SBT.
+
+
+DDF can be installed by,
 
 ```
-$ git clone https://github.com/ddf-project/DDF 
-```
-
-Now you need to prepare the build, which prepares the libraries,
-creates pom.xml in the various sub-project directories, and Eclipse
-.project and .classpath files.
-
-```
+$ git clone git@github.com:ddf-project/DDF.git
 $ cd DDF
+$ git fetch
+$ git checkout -v1.2.0
 $ bin/run-once.sh
+$ sbt publishLocal
 ```
 
-If you ever need to regenerate the pom.xml files:
+Installing `ddf-with-flink` can be done by
 
 ```
-$ bin/make-poms.sh
-```
-
-The following regenerates Eclipse .project and .classpath files:
-
-```
-$ bin/make-eclipse-projects.sh
-```
-
-### Building `DDF_core` or `DDF_spark`
-
-```
-$ (cd core ; mvn clean package)
-$ (cd spark ; mvn clean package)
+$ git clone git@github.com:tuplejump/ddf-with-flink.git
+$ cd ddf-with-flink
+$ bin/run-once.sh
+$ mvn package install -DskipTests
 ```
 
 ### Running tests
-	
+Tests can be run either through SBT or Maven,
 ```
-$ bin/sbt test
+$ sbt test
+$ mvn test
+
+//running a single test
+
+$ sbt "testOnly *FlinkDDFManagerSpec*"
+
+$ mvn test -Dsuites='io.ddf.flink.FlinkDDFManagerSpec'
 ```
 
-or
+### Starting `ddf-shell` with `flink` engine
 
+Execute the following only after installing `ddf-with-flink`
 ```
-$ (cd core ; mvn test)
-$ (cd spark ; mvn test)
+$ bin/ddf-shell
+```
+
+### Running the example,
+```
+$ bin/run-flink-example io.ddf.flink.examples.FlinkDDFExample
 ```
