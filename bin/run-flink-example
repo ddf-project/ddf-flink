@@ -18,28 +18,29 @@
 #
 
 SCALA_VERSION=2.10
-DDF_VERSION=1.1-adatao
+DDF_VERSION=1.2-adatao
 
 
 FWDIR="$(cd `dirname $0`/..; pwd)"
 
 if [ -z "$1" ]; then
-  echo "Usage: run-example <example-class> [<args>]" >&2
+  echo "Usage: run-flink-example <example-class> [<args>]" >&2
   exit 1
 fi
 
 # Figure out the JAR file that our examples were packaged into
 
-EXAMPLES_DIR="$FWDIR"/examples
+EXAMPLES_DIR="$FWDIR"/flink-examples
+ORI_EXAMPLES_DIR="$FWDIR"/examples
 
 if [ -f "$FWDIR/RELEASE" ]; then
-  export SPARK_EXAMPLES_JAR=`ls "$FWDIR"/lib/ddf_examples_$SCALA_VERSION-$DDF_VERSION.jar`
-elif [ -e "$EXAMPLES_DIR"/target/scala-$SCALA_VERSION/ddf_examples_$SCALA_VERSION-$DDF_VERSION.jar ]; then
-  export SPARK_EXAMPLES_JAR=`ls "$EXAMPLES_DIR"/target/scala-$SCALA_VERSION/ddf_examples_$SCALA_VERSION-$DDF_VERSION.jar`
+  export FLINK_EXAMPLES_JAR=`ls "$FWDIR"/lib/flink-examples_$SCALA_VERSION-$DDF_VERSION.jar`
+elif [ -e "$EXAMPLES_DIR"/target/scala-$SCALA_VERSION/flink-examples_$SCALA_VERSION-$DDF_VERSION.jar ]; then
+  export FLINK_EXAMPLES_JAR=`ls "$EXAMPLES_DIR"/target/scala-$SCALA_VERSION/flink-examples_$SCALA_VERSION-$DDF_VERSION.jar`
 fi
 
-if [[ -z $SPARK_EXAMPLES_JAR ]]; then
-  echo "Failed to find DDF examples assembly in $FWDIR/lib or $FWDIR/examples/target" >&2
+if [[ -z $FLINK_EXAMPLES_JAR ]]; then
+  echo "Failed to find DDF examples assembly in $FWDIR/lib or $FWDIR/flink-examples/target" >&2
   echo "You need to build DDF with mvn install before running this program" >&2
   exit 1
 fi
@@ -60,16 +61,16 @@ fi
 export JAVA_OPTS+=" -Dhive.metastore.warehouse.dir=/tmp/hive/warehouse"
 
 CLASSPATH="$EXAMPLES_DIR"/target/scala-2.10/lib/*
-CLASSPATH="$SPARK_EXAMPLES_JAR:$CLASSPATH"
+#CLASSPATH="$ORI_EXAMPLES_DIR"/target/scala-2.10/lib/*
+CLASSPATH="$FLINK_EXAMPLES_JAR:$CLASSPATH"
 
 echo $FWDIR
-echo $SPARK_EXAMPLES_JAR
+echo $FLINK_EXAMPLES_JAR
 echo $CLASSPATH
 echo $RUNNER
 echo $JAVA_OPTS
 echo $@
-#java -Dhive.metastore.warehouse.dir=/tmp/hive/warehouse -cp examples/target/scala-2.10/ddf_examples_2.10-0.9.jar:examples/target/scala-2.10/lib/* io.ddf.spark.examples.RowCount
-exec "$RUNNER" $JAVA_OPTS -cp "$CLASSPATH" "$@"
+exec "$RUNNER" $JAVA_OPTS -cp "$CLASSPATH" "$@" $EXAMPLES_DIR/src/main/resources
 
 
 

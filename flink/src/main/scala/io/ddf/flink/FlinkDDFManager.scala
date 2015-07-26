@@ -13,6 +13,8 @@ import org.apache.flink.api.table.Row
 import org.slf4j.LoggerFactory
 import scala.collection.JavaConverters._
 
+import FlinkConstants._
+
 class FlinkDDFManager extends DDFManager {
 
   private val flinkExecutionEnvironment: ExecutionEnvironment = createExecutionEnvironment
@@ -75,13 +77,17 @@ class FlinkDDFManager extends DDFManager {
   }
 
   private def createExecutionEnvironment:ExecutionEnvironment = {
-    val isLocal = java.lang.Boolean.parseBoolean(Config.getValue(Config.ConfigConstant.ENGINE_NAME_FLINK.toString,"local"))
+    val isLocal = java.lang.Boolean.parseBoolean(Config.getValue(ENGINE_NAME_FLINK,"local"))
     if(isLocal) ExecutionEnvironment.getExecutionEnvironment
     else {
-      val host = Config.getValue(Config.ConfigConstant.ENGINE_NAME_FLINK.toString,"host")
-      val port = java.lang.Integer.parseInt(Config.getValue(Config.ConfigConstant.ENGINE_NAME_FLINK.toString,"port"))
-      val parallelism = java.lang.Integer.parseInt(Config.getValue(Config.ConfigConstant.ENGINE_NAME_FLINK.toString,"parallelism"))
+      val host = Config.getValue(ENGINE_NAME_FLINK,"host")
+      val port = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME_FLINK,"port"))
+      val parallelism = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME_FLINK,"parallelism"))
       ExecutionEnvironment.createRemoteEnvironment(host,port,parallelism)
     }
   }
+}
+
+object FlinkConstants {
+  val ENGINE_NAME_FLINK: String = "flink"
 }

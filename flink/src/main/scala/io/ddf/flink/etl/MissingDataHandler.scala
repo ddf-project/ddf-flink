@@ -170,12 +170,12 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
                 col.cType match {
                   case ColumnType.STRING => generatedRow.setField(index, replaceWithValue)
                   case ColumnType.INT => generatedRow.setField(index, replaceWithValue.toInt)
-                  case ColumnType.LONG => generatedRow.setField(index, replaceWithValue.toLong)
+                  //case ColumnType.LONG => generatedRow.setField(index, replaceWithValue.toLong)
                   case ColumnType.FLOAT => generatedRow.setField(index, replaceWithValue.toFloat)
                   case ColumnType.DOUBLE => generatedRow.setField(index, replaceWithValue.toDouble)
                   case ColumnType.BIGINT => generatedRow.setField(index, replaceWithValue.toDouble)
                   case ColumnType.TIMESTAMP => generatedRow.setField(index, dateFormat.parse(replaceWithValue))
-                  case ColumnType.LOGICAL => generatedRow.setField(index, replaceWithValue.toBoolean)
+                  case ColumnType.BOOLEAN => generatedRow.setField(index, replaceWithValue.toBoolean)
                 }
               case x =>
                 generatedRow.setField(index, x)

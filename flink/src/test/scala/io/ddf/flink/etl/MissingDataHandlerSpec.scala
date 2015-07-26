@@ -11,7 +11,7 @@ import scala.collection.JavaConversions._
 
 class MissingDataHandlerSpec extends BaseSpec {
 
-  val missingData =  flinkDDFManager.loadTable(getClass.getResource("/airlineWithNA.csv").getPath, ",")
+  val missingData = loadAirlineNADDF()
 
   it should "drop all rows with NA values" in {
     val result = missingData.dropNA()
@@ -35,6 +35,12 @@ class MissingDataHandlerSpec extends BaseSpec {
   }
 
   it should "drop all columns with NA values" in {
+    val result = missingData.dropNA(Axis.COLUMN)
+    result.getNumColumns should be(22)
+  }
+
+  it should "drop all columns with NA values with load table" in {
+    val missingData = loadAirlineNADDF()
     val result = missingData.dropNA(Axis.COLUMN)
     result.getNumColumns should be(22)
   }

@@ -19,7 +19,7 @@ class ArrayObject2FlinkRList(@transient ddf: DDF) extends ConvertFunction(ddf) {
         case ColumnType.STRING =>
           val updatedElems = objArray.map(elem => Try(elem.toString).getOrElse(null))
           new REXPString(updatedElems.toArray)
-        case ColumnType.INT | ColumnType.LONG =>
+        case ColumnType.INT =>
           val updatedElems = objArray.map(elem => Try(elem.toString.toInt).getOrElse(REXPInteger.NA))
           new REXPInteger(updatedElems.toArray)
         case ColumnType.BIGINT | ColumnType.FLOAT | ColumnType.DOUBLE =>

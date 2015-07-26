@@ -13,7 +13,7 @@ object SqlSupport {
 
   case class Create(tableName: String, columns: List[(String, String)]) extends Function
 
-  case class Load(tableName: String, delimiter: Char, url: String, emptyValue: String, useDefaults: Boolean) extends Function
+  case class Load(tableName: String, delimiter: Char, url: String, nullValue:String,emptyValue: String, useDefaults: Boolean) extends Function
 
   case class Select(project: Projection, relations: Array[Relation], where: Option[Where], group: Option[GroupBy], order: Option[OrderBy], limit: Int) extends Function {
     override def toString = "Select(" + project + ")From(" + relations.mkString(",") + ")Where(" + where + ")GroupBy(" + group + ")OrderBy(" + order + ")Limit(" + limit + ")"
@@ -92,9 +92,10 @@ object SqlSupport {
       ((CREATE ~> TABLE) ~> tableName) ~ columnsWithTypes ^^ { case name ~ contents => Create(name.tableName, contents) }
 
     lazy val load: ExpressionParser.PackratParser[Load] =
-      (LOAD ~> quotedStr) ~ (DELIMITED ~> BY ~> quotedStr).? ~ (WITH ~> NULL ~> quotedStr).? ~ (NO ~> DEFAULTS).? ~ (INTO ~> tableName) ^^ { case url ~ dl ~ nullVal ~ noDef ~ name =>
+      (LOAD ~> quotedStr) ~ (DELIMITED ~> BY ~> quotedStr).? ~ (WITH ~> NULL ~> quotedStr).? ~ (WITH ~> EMPTY ~> quotedStr).? ~ (NO ~> DEFAULTS).? ~ (INTO ~> tableName) ^^ { case url ~ dl ~ nullVal ~ emptyVal~ noDef ~ name =>
         Load(name.tableName, dl.getOrElse(",").toCharArray()(0), url,
-          nullVal.getOrElse("null"),
+          nullValue = nullVal.getOrElse(null),
+          emptyValue = emptyVal.getOrElse(null),
           noDef.map {
             case s: String => false
             case _ => true
@@ -302,6 +303,7 @@ object SqlSupport {
     protected val DELIMITED = ExpressionParser.Keyword("DELIMITED")
     protected val WITH = ExpressionParser.Keyword("WITH")
     protected val NULL = ExpressionParser.Keyword("NULL")
+    protected val EMPTY = ExpressionParser.Keyword("EMPTY")
     protected val NO = ExpressionParser.Keyword("NO")
     protected val DEFAULTS = ExpressionParser.Keyword("DEFAULTS")
 

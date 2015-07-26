@@ -28,15 +28,15 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
   }
 
   override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util.List[util.List[DDF]] = {
-    throw new UnsupportedOperationException("This method is not implemented on Flink DDF")
+    this.getMLSupporter.CVRandom(k, trainingSize, seed)
   }
 
   override def CVKFold(k: Int, seed: lang.Long): util.List[util.List[DDF]] = {
-    throw new UnsupportedOperationException("This method is not implemented on Flink DDF")
+    this.getMLSupporter.CVKFold(k, seed)
   }
 
   override def getConfusionMatrix(model: IModel, threshold: Double): Array[Array[Long]] = {
-    throw new UnsupportedOperationException("This method is not implemented on Flink DDF")
+    this.getMLSupporter.getConfusionMatrix(model, threshold)
   }
 
   override def getDDF: DDF = iddf
@@ -44,11 +44,6 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
 
   override def setDDF(theDDF: DDF): Unit = {
     iddf = theDDF
-  }
-
-  def multipleLinearRegression(): DDF = {
-    val model = this.train("multipleLinearRegression")
-    this.applyModel(model)
   }
 
   def svm(blocks: Option[Int] = None,
@@ -76,5 +71,48 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
     this.train("svm", paramMap)
   }
 
+  def mlr(iterations: Option[Int] = None,
+          stepsize: Option[Double] = None,
+          convergenceThreshold: Option[Double] = None): IModel = {
+
+    import org.apache.flink.ml.regression.MultipleLinearRegression
+
+    val paramMap = {
+      val pmap = new ParameterMap()
+
+      iterations.map(i => pmap.add(MultipleLinearRegression.Iterations, i))
+      stepsize.map(ss => pmap.add(MultipleLinearRegression.Stepsize, ss))
+      convergenceThreshold.map(s => pmap.add(MultipleLinearRegression.ConvergenceThreshold, s))
+
+      pmap
+    }
+
+    this.train("mlr", paramMap)
+  }
+
+  def als(numFactors: Option[Int] = None,
+          lambda: Option[Double] = None,
+          iterations: Option[Int] = None,
+          blocks: Option[Int] = None,
+          seed: Option[Long] = None,
+          temporaryPath: Option[String] = None): IModel = {
+
+    import org.apache.flink.ml.recommendation.ALS
+
+    val paramMap = {
+      val pmap = new ParameterMap()
+      blocks.map(b => pmap.add(ALS.Blocks, b))
+
+      numFactors.map(i => pmap.add(ALS.NumFactors, i))
+      lambda.map(i => pmap.add(ALS.Lambda, i))
+      iterations.map(i => pmap.add(ALS.Iterations, i))
+      seed.map(s => pmap.add(ALS.Seed, s))
+      temporaryPath.map(p => pmap.add(ALS.TemporaryPath, p))
+
+      pmap
+    }
+
+    this.train("als", paramMap)
+  }
 
 }

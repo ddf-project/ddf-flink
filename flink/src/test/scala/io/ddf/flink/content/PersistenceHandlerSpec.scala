@@ -3,6 +3,7 @@ package io.ddf.flink.content
 import java.io.File
 
 import io.ddf.content.APersistenceHandler.PersistenceUri
+import io.ddf.flink.FlinkConstants
 import io.ddf.misc.Config.ConfigConstant
 import io.ddf.{DDF, DDFManager}
 import org.scalatest.{Matchers, FlatSpec}
@@ -30,7 +31,7 @@ class PersistenceHandlerSpec extends FlatSpec with Matchers {
     val ddf: DDF = manager.newDDF
 
     val uri: PersistenceUri = ddf.persist
-    uri.getEngine should be(ConfigConstant.ENGINE_NAME_FLINK.toString)
+    uri.getEngine should be(FlinkConstants.ENGINE_NAME_FLINK)
     new File(uri.getPath).exists should be(true)
     ddf.unpersist
   }
