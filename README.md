@@ -29,7 +29,9 @@ $ git fetch
 $ git checkout -v1.2.0
 ```
 
-Before installing DDF, add a new line after line#482 in project/RootBuild.scala, (don't miss adding the comma at the end of line#482)
+No changes are required when installing DDF using maven.
+
+Before installing DDF using SBT, add a new line after line#482 in project/RootBuild.scala, (don't miss adding the comma at the end of line#482)
 
 ```
   ),
@@ -39,12 +41,17 @@ publishArtifact in (Compile, packageDoc) := false
 This is to avoid the error in publishing docs through SBT.
 
 
+
 DDF can be installed by,
 
 ```
 $ bin/run-once.sh
+//using maven
+$ mvn package install -DskipTests
+//or using sbt
 $ sbt publishLocal
 ```
+
 
 Installing `ddf-with-flink` can be done by
 
@@ -72,10 +79,16 @@ $ mvn test -Dsuites='io.ddf.flink.FlinkDDFManagerSpec'
 
 Execute the following only after installing `ddf-with-flink`
 ```
+$ sbt package
 $ bin/ddf-shell
 ```
 
+SBT package is required since it generates the `lib_managed` which is required for running the scripts.
+
 ### Running the example,
 ```
+$ sbt package
 $ bin/run-flink-example io.ddf.flink.examples.FlinkDDFExample
 ```
+
+SBT package is required since it generates the `lib_managed` which is required for running the scripts.

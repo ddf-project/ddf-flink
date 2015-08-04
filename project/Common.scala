@@ -74,7 +74,10 @@ object Common {
     fork in Test := true,
     parallelExecution in ThisBuild := false,
     javaOptions in Test ++= Seq("-Xmx2g"),
-    concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)
+    concurrentRestrictions in Global += Tags.limit(Tags.Test, 1),
+    resolvers ++= Seq(Resolver.mavenLocal,
+      "Adatao Mvnrepos Snapshots" at "https://raw.github.com/adatao/mvnrepos/master/snapshots",
+      "Adatao Mvnrepos Releases" at "https://raw.github.com/adatao/mvnrepos/master/releases")
   )
 
 }

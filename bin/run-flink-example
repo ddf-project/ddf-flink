@@ -18,7 +18,7 @@
 #
 
 SCALA_VERSION=2.10
-DDF_VERSION=1.2-adatao
+DDF_VERSION=1.2.0
 
 
 FWDIR="$(cd `dirname $0`/..; pwd)"
@@ -31,12 +31,13 @@ fi
 # Figure out the JAR file that our examples were packaged into
 
 EXAMPLES_DIR="$FWDIR"/flink-examples
-ORI_EXAMPLES_DIR="$FWDIR"/examples
 
 if [ -f "$FWDIR/RELEASE" ]; then
   export FLINK_EXAMPLES_JAR=`ls "$FWDIR"/lib/flink-examples_$SCALA_VERSION-$DDF_VERSION.jar`
 elif [ -e "$EXAMPLES_DIR"/target/scala-$SCALA_VERSION/flink-examples_$SCALA_VERSION-$DDF_VERSION.jar ]; then
   export FLINK_EXAMPLES_JAR=`ls "$EXAMPLES_DIR"/target/scala-$SCALA_VERSION/flink-examples_$SCALA_VERSION-$DDF_VERSION.jar`
+elif [ -e "$EXAMPLES_DIR"/target/flink-examples_$SCALA_VERSION-$DDF_VERSION.jar ]; then
+  export FLINK_EXAMPLES_JAR=`ls "$EXAMPLES_DIR"/target/flink-examples_$SCALA_VERSION-$DDF_VERSION.jar`
 fi
 
 if [[ -z $FLINK_EXAMPLES_JAR ]]; then
@@ -60,9 +61,18 @@ fi
 #setup java_opts
 export JAVA_OPTS+=" -Dhive.metastore.warehouse.dir=/tmp/hive/warehouse"
 
-CLASSPATH="$EXAMPLES_DIR"/target/scala-2.10/lib/*
-#CLASSPATH="$ORI_EXAMPLES_DIR"/target/scala-2.10/lib/*
-CLASSPATH="$FLINK_EXAMPLES_JAR:$CLASSPATH"
+
+EXAMPLES_DIR="$FWDIR"/flink-examples
+
+SHELL_JAR="$FWDIR"/bin/jline2.jar:"$FWDIR"/bin/jshell.jar
+
+DEPS_JARS=$(echo "$FWDIR"/lib_managed/jars/*/*/*.jar | tr ' ' ':')
+
+BUNDLE_JARS=$(echo "$FWDIR"/lib_managed/bundles/*/*/*.jar | tr ' ' ':')
+
+FLINK_JAR="$FWDIR"/flink/target/scala-2.10/*:"$FWDIR"/flink/target/*:$DEPS_JARS:$BUNDLE_JARS
+
+CLASSPATH="$FLINK_EXAMPLES_JAR:$FLINK_JAR:$CLASSPATH"
 
 echo $FWDIR
 echo $FLINK_EXAMPLES_JAR

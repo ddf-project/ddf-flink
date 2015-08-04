@@ -60,7 +60,4 @@ lazy val flinkExamples = project.in(file("flink-examples")).dependsOn(flink).set
   pomExtra := submodulePom
 )
 
-resolvers ++= Seq("Adatao Mvnrepos Snapshots" at "https://raw.github.com/adatao/mvnrepos/master/snapshots",
-  "Adatao Mvnrepos Releases" at "https://raw.github.com/adatao/mvnrepos/master/releases")
-
 publishMavenStyle := true
