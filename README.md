@@ -20,9 +20,17 @@ For Big Data Scientists & Engineers
 
 ### Getting Started
 
-This project depends on DDF and requires its installation to run.
+This project depends on DDF v1.2.0 and requires its installation to run. To get DDF version 1.2.0, clone DDF repo and checkout the v1.2.0 tag.
 
-Before installing DDF, update line#482 in project/RootBuild.scala to,
+```
+$ git clone git@github.com:ddf-project/DDF.git
+$ cd DDF
+$ git fetch
+$ git checkout -v1.2.0
+```
+
+Before installing DDF, add a new line after line#482 in project/RootBuild.scala, (don't miss adding the comma at the end of line#482)
+
 ```
   ),
 
@@ -34,10 +42,6 @@ This is to avoid the error in publishing docs through SBT.
 DDF can be installed by,
 
 ```
-$ git clone git@github.com:ddf-project/DDF.git
-$ cd DDF
-$ git fetch
-$ git checkout -v1.2.0
 $ bin/run-once.sh
 $ sbt publishLocal
 ```
