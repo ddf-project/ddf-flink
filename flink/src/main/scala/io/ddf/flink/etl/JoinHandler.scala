@@ -2,7 +2,7 @@ package io.ddf.flink.etl
 
 import java.util
 
-import io.ddf.DDF
+import io.ddf.{DDFManager, DDF}
 import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.etl.IHandleJoins
@@ -25,7 +25,9 @@ class JoinHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandle
 
     val newTableName = this.getDDF.getSchemaHandler.newTableName()
     val joinedSchema = new Schema(newTableName, joinedColNames.toList)
-    val resultDDF: DDF = this.getManager.newDDF(joinedDataSet, Array(classOf[DataSet[_]], classOf[Row]), getDDF.getNamespace, newTableName, joinedSchema)
+    val manager: DDFManager = this.getManager
+    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
+    val resultDDF: DDF = manager.newDDF(joinedDataSet, typeSpecs, manager.getEngineName, getDDF.getNamespace, newTableName, joinedSchema)
     this.getDDF.getManager.addDDF(resultDDF)
     resultDDF
 
@@ -36,16 +38,18 @@ class JoinHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandle
     val rightTable = anotherDDF.getRepresentationHandler.get(Array(classOf[DataSet[_]], classOf[Row]): _*).asInstanceOf[DataSet[Row]]
     val leftSchema = getDDF.getSchema
     val rightSchema = anotherDDF.getSchema
-    val resultDataSet:DataSet[Row] =
-    if(leftSchema.getColumns.equals(rightSchema.getColumns)){
-      // the columns are the same we can simple union.
-      leftTable.union(rightTable)
-    }else{
-      throw new IllegalArgumentException("Union can be done on DDFs with same schema")
-    }
+    val resultDataSet: DataSet[Row] =
+      if (leftSchema.getColumns.equals(rightSchema.getColumns)) {
+        // the columns are the same we can simple union.
+        leftTable.union(rightTable)
+      } else {
+        throw new IllegalArgumentException("Union can be done on DDFs with same schema")
+      }
     val newTableName = this.getDDF.getSchemaHandler.newTableName()
     val newSchema = new Schema(newTableName, leftSchema.getColumns)
-    val resultDDF: DDF = this.getManager.newDDF(resultDataSet, Array(classOf[DataSet[_]], classOf[Row]), getDDF.getNamespace, newTableName, newSchema)
+    val manager: DDFManager = this.getManager
+    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
+    val resultDDF: DDF = this.getManager.newDDF(resultDataSet, typeSpecs, manager.getEngineName, getDDF.getNamespace, newTableName, newSchema)
     this.getDDF.getManager.addDDF(resultDDF)
     resultDDF
   }
