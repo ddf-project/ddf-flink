@@ -3,7 +3,7 @@ package io.ddf.flink.analytics
 import java.security.SecureRandom
 import java.util
 
-import io.ddf.DDF
+import io.ddf.{DDFManager, DDF}
 import io.ddf.analytics.IHandleAggregation
 import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
@@ -90,13 +90,14 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
     val generatedSchema = new Schema(tableName, columns)
     val typeSpecs: Array[Class[_]] = Array(classOf[Table])
-    val resultDDF: DDF = ddf.getManager.newDDF(table, typeSpecs, ddf.getNamespace, tableName, generatedSchema)
+    val manager: DDFManager = ddf.getManager
+    val resultDDF: DDF = manager.newDDF(table, typeSpecs, manager.getEngineName, ddf.getNamespace, tableName, generatedSchema)
     resultDDF
   }
 
   private def getCleanTable(columnNames: Seq[String]): Table = {
     val table = ddf.getRepresentationHandler.get(classOf[Table]).asInstanceOf[Table]
-    val tableWithoutNull = table.select(columnNames.mkString(",")).where(columnNames.map{
+    val tableWithoutNull = table.select(columnNames.mkString(",")).where(columnNames.map {
       c => s"$c.isNotNull"
     }.mkString(" && "))
     tableWithoutNull

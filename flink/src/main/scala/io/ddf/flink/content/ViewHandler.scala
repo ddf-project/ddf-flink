@@ -7,7 +7,6 @@ import io.ddf.content.Schema
 import io.ddf.content.ViewHandler.{Column, Expression, OperationName, Operator}
 import io.ddf.flink.utils.Samples
 import org.apache.flink.api.scala.DataSet
-import org.apache.flink.api.table.Row
 
 import scala.collection.JavaConversions._
 
@@ -26,7 +25,8 @@ class ViewHandler(ddf: DDF) extends io.ddf.content.ViewHandler(ddf) {
     val manager = ddf.getManager
     val columns = ddf.getSchema.getColumns
     val schema = new Schema(ddf.getSchemaHandler.newTableName(), columns)
-    val sampleDDF = manager.newDDF(manager, newDS,Array(classOf[DataSet[_]], classOf[Array[Object]]), manager.getNamespace, null, schema)
+    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
+    val sampleDDF = manager.newDDF(manager, newDS,typeSpecs, manager.getNamespace, null, schema)
     mLog.info(">>>>>>> adding ddf to DDFManager " + sampleDDF.getName)
     manager.addDDF(sampleDDF)
     sampleDDF.getMetaDataHandler.copyFactor(this.getDDF)

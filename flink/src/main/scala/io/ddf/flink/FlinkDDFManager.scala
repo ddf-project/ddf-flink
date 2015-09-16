@@ -1,9 +1,11 @@
 package io.ddf.flink
 
 import java.security.SecureRandom
+import java.util.UUID
 
 import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
+import io.ddf.flink.FlinkConstants._
 import io.ddf.flink.content.RepresentationHandler
 import io.ddf.flink.utils.Utils
 import io.ddf.misc.Config
@@ -11,9 +13,6 @@ import io.ddf.{DDF, DDFManager}
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
 import org.apache.flink.api.table.Row
 import org.slf4j.LoggerFactory
-import scala.collection.JavaConverters._
-
-import FlinkConstants._
 
 class FlinkDDFManager extends DDFManager {
 
@@ -21,7 +20,7 @@ class FlinkDDFManager extends DDFManager {
 
   private final val logger = LoggerFactory.getLogger(getClass)
 
-  override def getEngine: String = "flink"
+  override def getEngine: String = ENGINE_NAME_FLINK
 
   override def loadTable(fileURL: String, fieldSeparator: String): DDF = {
     val fileData: DataSet[Array[Object]] = flinkExecutionEnvironment
@@ -37,9 +36,9 @@ class FlinkDDFManager extends DDFManager {
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
 
     val schema: Schema = new Schema(tableName, columns)
-    val rowDS = RepresentationHandler.getRowDataSet(fileData,schema.getColumns.asScala.toList,false)
+    val rowDS = RepresentationHandler.getRowDataSet(fileData, columns.toList, useDefaults = false)
 
-    val ddf = this.newDDF(rowDS, typeSpecs, namespace, tableName, schema)
+    val ddf = this.newDDF(rowDS, typeSpecs, getEngine, namespace, tableName, schema)
     this.addDDF(ddf)
     ddf
   }
@@ -76,16 +75,22 @@ class FlinkDDFManager extends DDFManager {
     }
   }
 
-  private def createExecutionEnvironment:ExecutionEnvironment = {
-    val isLocal = java.lang.Boolean.parseBoolean(Config.getValue(ENGINE_NAME_FLINK,"local"))
-    if(isLocal) ExecutionEnvironment.getExecutionEnvironment
+  private def createExecutionEnvironment: ExecutionEnvironment = {
+    val isLocal = java.lang.Boolean.parseBoolean(Config.getValue(ENGINE_NAME_FLINK, "local"))
+    if (isLocal) ExecutionEnvironment.getExecutionEnvironment
     else {
-      val host = Config.getValue(ENGINE_NAME_FLINK,"host")
-      val port = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME_FLINK,"port"))
-      val parallelism = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME_FLINK,"parallelism"))
-      ExecutionEnvironment.createRemoteEnvironment(host,port,parallelism)
+      val host = Config.getValue(ENGINE_NAME_FLINK, "host")
+      val port = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME_FLINK, "port"))
+      val parallelism = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME_FLINK, "parallelism"))
+      ExecutionEnvironment.createRemoteEnvironment(host, port, parallelism)
     }
   }
+
+  override def transfer(fromEngine: String, ddfURI: String): DDF = ???
+
+  override def getOrRestoreDDFUri(ddfURI: String): DDF = null
+
+  override def getOrRestoreDDF(uuid: UUID): DDF = null
 }
 
 object FlinkConstants {

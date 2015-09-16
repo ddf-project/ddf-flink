@@ -8,7 +8,7 @@ object Common {
 
   lazy val rootProjectName = "ddf"
 
-  lazy val ddfVersion = "1.2.0"
+  lazy val ddfVersion = "1.4.0-SNAPSHOT"
 
   lazy val theScalaVersion = "2.10.4"
 

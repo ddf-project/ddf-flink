@@ -4,7 +4,7 @@ import java.security.SecureRandom
 import java.text.SimpleDateFormat
 import java.util
 
-import io.ddf.DDF
+import io.ddf.{DDFManager, DDF}
 import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.etl.IHandleMissingData
@@ -27,7 +27,8 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     val rand: SecureRandom = new SecureRandom
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
     val schema: Schema = new Schema(tableName, schemaColumns)
-    ddf.getManager.newDDF(data, typeSpecs, namespace, tableName, schema)
+    val manager: DDFManager = ddf.getManager
+    manager.newDDF(data, typeSpecs, manager.getEngineName, namespace, tableName, schema)
   }
 
   private def dropColumnsWithNA(columnNames: List[String], columnNamesString: String, threshold: Long): DDF = {

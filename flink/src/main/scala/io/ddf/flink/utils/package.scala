@@ -4,7 +4,7 @@ import java.util
 
 import com.clearspring.analytics.stream.quantile.QDigest
 import com.univocity.parsers.csv.{CsvParser, CsvParserSettings}
-import io.ddf.DDF
+import io.ddf.{DDFManager, DDF}
 import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.etl.Types.JoinType
@@ -222,7 +222,9 @@ package object utils {
       cols.set(colIndex, new Column(column.getName, ColumnType.STRING))
       val newTableName = ddf.getSchemaHandler.newTableName()
       val newSchema = new Schema(newTableName, cols)
-      ddf.getManager().newDDF(binned, Array(classOf[DataSet[_]], classOf[Array[Object]]), null, newTableName, newSchema)
+      val manager: DDFManager = ddf.getManager()
+      val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
+      manager.newDDF(binned, typeSpecs, manager.getEngineName, null, newTableName, newSchema)
     }
   }
 
@@ -355,7 +357,7 @@ package object utils {
   class SerCsvParserSettings extends CsvParserSettings with Serializable
 
 
-  class StringArrayCsvInputFormat(filePath: Path, delimiter: Char, emptyValue: String,nullValue:String) extends DelimitedInputFormat[Array[String]] {
+  class StringArrayCsvInputFormat(filePath: Path, delimiter: Char, emptyValue: String, nullValue: String) extends DelimitedInputFormat[Array[String]] {
     val charsetName = "UTF-8"
     val isFSV = delimiter == ' ' || delimiter == '\t'
 
