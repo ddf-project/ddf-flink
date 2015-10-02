@@ -3,7 +3,7 @@ package io.ddf.flink.ml
 import java.{lang, util}
 
 import io.ddf.DDF
-import io.ddf.content.Schema
+import io.ddf.content.{IHandleRepresentations, Schema}
 import io.ddf.content.Schema.Column
 import io.ddf.flink.FlinkDDF
 import io.ddf.flink.analytics.CrossValidation
@@ -35,9 +35,9 @@ class FlinkMLSupporter(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IS
     }
   }
 
-  override def applyModel(model: IModel): DDF = applyModel(model, true)
+  override def applyModel(model: IModel): DDF = applyModel(model, hasLabels = true)
 
-  override def applyModel(model: IModel, hasLabels: Boolean): DDF = applyModel(model, hasLabels, true)
+  override def applyModel(model: IModel, hasLabels: Boolean): DDF = applyModel(model, hasLabels, includeFeatures = true)
 
   override def applyModel(model: IModel, hasLabels: Boolean, includeFeatures: Boolean): DDF = {
     import scala.collection.JavaConverters._
@@ -67,8 +67,11 @@ class FlinkMLSupporter(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IS
     val ddf: FlinkDDF = this.getDDF.asInstanceOf[FlinkDDF]
     val predictions: FlinkDDF = ddf.ML.applyModel(model, true, false).asInstanceOf[FlinkDDF]
 
-    // Now get the underlying RDD to compute
-    val yTrueYPred: DataSet[Array[Double]] = predictions.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Double]]).asInstanceOf[DataSet[Array[Double]]]
+    val representationHandler: IHandleRepresentations = predictions.getRepresentationHandler
+
+    // Now get the underlying Dataset to compute
+    val datasetTypeSpecs = Array(classOf[DataSet[_]], classOf[Array[Double]])
+    val yTrueYPred: DataSet[Array[Double]] = representationHandler.get(datasetTypeSpecs: _*).asInstanceOf[DataSet[Array[Double]]]
     val threshold1: Double = threshold
     val cm: Array[Long] = yTrueYPred.map(new MapFunction[Array[Double], Array[Long]]() {
       override def map(params: Array[Double]): Array[Long] = {

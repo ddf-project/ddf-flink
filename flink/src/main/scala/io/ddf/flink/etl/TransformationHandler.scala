@@ -27,8 +27,8 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
           case aExc: DDFException =>
             throw aExc
           case rserveExc: org.rosuda.REngine.Rserve.RserveException =>
-            throw new DDFException(rserveExc.getMessage, null)
-          case e: Exception => throw new DDFException(e.getMessage, null)
+            throw new DDFException(rserveExc.getMessage, rserveExc)
+          case e: Exception => throw new DDFException(e.getMessage, e)
         }
     }
 
@@ -43,8 +43,8 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
         } catch {
           case aExc: DDFException => throw aExc
           case rserveExc: org.rosuda.REngine.Rserve.RserveException =>
-            throw new DDFException(rserveExc.getMessage, null)
-          case e: Exception => throw new DDFException(e.getMessage, null)
+            throw new DDFException(rserveExc.getMessage, rserveExc)
+          case e: Exception => throw new DDFException(e.getMessage, e)
         }
     }.filter {
       partdf =>
@@ -171,7 +171,6 @@ object TransformationHandler {
     // one connection for each compute job
     val rconn = new RConnection()
 
-    println("after connecting, "+partdf.names.mkString(","))
     val rList: RList = new RList(partdf.content, partdf.names)
     val dataFrame: REXP = REXP.createDataFrame(rList)
 
@@ -414,7 +413,7 @@ object TransformationHandler {
         rconn.assign("reduce.serialized.vvlist", new REXPList(new RList(seqv)))
 
         // print to Rserve log
-//        rconn.voidEval("print(paste('====== processing key = ', reduce.key))")
+        //        rconn.voidEval("print(paste('====== processing key = ', reduce.key))")
 
         TransformationHandler.tryEval(rconn, "reduce.vvlist <- lapply(reduce.serialized.vvlist, unserialize)",
           errMsgHeader = "fail to unserialize shuffled values for key = " + k)
@@ -445,7 +444,7 @@ object TransformationHandler {
     val result = rconn.eval("reduced.partition")
 
     // print to Rserve log
-//    rconn.voidEval("print('==== reduce phase completed')")
+    //    rconn.voidEval("print('==== reduce phase completed')")
 
     // done R computation for this partition
     rconn.close()

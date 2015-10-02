@@ -15,6 +15,7 @@ import io.ddf.types.AggregateTypes.AggregateFunction
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.Row
+import io.ddf.flink.utils.Misc._
 
 import scala.collection.JavaConversions._
 
@@ -44,7 +45,7 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
         val colIndex = x.toSeq.head._1
         val colValues = x.map {
           entry =>
-            if (entry._2 == null) 1 else 0
+            if (isNull(entry._2)) 1 else 0
         }
         val countOfNullValues = colValues.sum
         (colIndex, countOfNullValues)
@@ -65,7 +66,7 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
       row =>
         val countOfNullValues = columnIndices.map {
           index =>
-            if (row.productElement(index) == null) 1 else 0
+            if (isNull(row.productElement(index))) 1 else 0
         }.sum
         countOfNullValues < actualThreshold
     }
@@ -88,7 +89,7 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
 
   override def dropNA(axis: Axis, how: NAChecking, threshold: Long, columns: util.List[String]): DDF = {
     val columnNames: List[String] = columns match {
-      case c if (c == null || c.isEmpty) => ddf.getColumnNames.toList
+      case c if (isNull(c) || c.isEmpty) => ddf.getColumnNames.toList
       case _ => columns.toList
     }
     val columnNamesString = columnNames.mkString(",")
@@ -118,10 +119,10 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
   override def fillNA(value: String, method: FillMethod, limit: Long, function: AggregateFunction,
                       columnsToValues: util.Map[String, String], columns: util.List[String]): DDF = {
 
-    method match {
-      case null =>
+    Option(method) match {
+      case None =>
         fillByValue(value, function, columnsToValues, columns)
-      case _ =>
+      case Some(x) =>
         throw new DDFException("This has not been implemented yet.")
     }
   }
@@ -131,7 +132,7 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
                           columnsToValues: util.Map[String, String],
                           columns: util.List[String]): DDF = {
     val dataColumns = columns match {
-      case c if (c == null || c.isEmpty) => ddf.getSchema.getColumns.zipWithIndex.toList
+      case c if (isNull(c) || c.isEmpty) => ddf.getSchema.getColumns.zipWithIndex.toList
       case _ => columns.map {
         cName =>
           val column = ddf.getColumn(cName)
@@ -143,11 +144,12 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     val schemaColumns = dataColumns.zipWithIndex.map {
       case ((col, oldIndex), currentIndex) =>
         val columnName: String = col.getName
-        val defaultValue = if (value != null) {
+        println(s"$value -- $columnsToValues -- $aggregateFunction")
+        val defaultValue = if (!isNull(value)) {
           value
-        } else if (columnsToValues != null && columnsToValues.containsKey(columnName)) {
+        } else if (!isNull(columnsToValues) && columnsToValues.containsKey(columnName)) {
           columnsToValues(columnName)
-        } else if (aggregateFunction != null && col.isNumeric) {
+        } else if (!isNull(aggregateFunction) && col.isNumeric) {
           ddf.getAggregationHandler.aggregateOnColumn(aggregateFunction, columnName).toString
         } else {
           throw new DDFException("Invalid fill value")
@@ -165,8 +167,8 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
         schemaColumns.foreach {
           case col =>
             val index = col.currentIndex
-            row.productElement(col.oldIndex) match {
-              case null =>
+            Option(row.productElement(col.oldIndex)) match {
+              case None =>
                 val replaceWithValue = col.default
                 col.cType match {
                   case ColumnType.STRING => generatedRow.setField(index, replaceWithValue)
@@ -178,7 +180,7 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
                   case ColumnType.TIMESTAMP => generatedRow.setField(index, dateFormat.parse(replaceWithValue))
                   case ColumnType.BOOLEAN => generatedRow.setField(index, replaceWithValue.toBoolean)
                 }
-              case x =>
+              case Some(x) =>
                 generatedRow.setField(index, x)
             }
         }

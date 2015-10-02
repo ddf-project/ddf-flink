@@ -3,6 +3,8 @@ package io.ddf.flink
 import io.ddf.{DDF, DDFManager}
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.collection.JavaConverters._
+
 class BaseSpec extends FlatSpec with Matchers {
   val flinkDDFManager = DDFManager.get("flink").asInstanceOf[FlinkDDFManager]
   var lDdf: DDF = null
@@ -20,9 +22,9 @@ class BaseSpec extends FlatSpec with Matchers {
       flinkDDFManager.getDDFByName("iris")
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql("create table iris (flower double, petal double, septal double)")
+        flinkDDFManager.sql("create table iris (flower double, petal double, septal double)", FlinkConstants.ENGINE_NAME_FLINK)
         val filePath = getClass.getResource("/fisheriris.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into iris")
+        flinkDDFManager.sql("load '" + filePath + "' into iris", FlinkConstants.ENGINE_NAME_FLINK)
         flinkDDFManager.getDDFByName("iris")
     }
   }
@@ -39,9 +41,9 @@ class BaseSpec extends FlatSpec with Matchers {
       ddf = flinkDDFManager.getDDFByName("airline")
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql("create table airline (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )")
+        flinkDDFManager.sql("create table airline (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME_FLINK)
         val filePath = getClass.getResource("/airline.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into airline")
+        flinkDDFManager.sql("load '" + filePath + "' into airline", FlinkConstants.ENGINE_NAME_FLINK)
         ddf = flinkDDFManager.getDDFByName("airline")
     }
     ddf
@@ -53,9 +55,9 @@ class BaseSpec extends FlatSpec with Matchers {
       ddf = flinkDDFManager.getDDFByName("airlineWithNA")
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql("create table airlineWithNA (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )")
+        flinkDDFManager.sql("create table airlineWithNA (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME_FLINK)
         val filePath = getClass.getResource("/airlineWithNA.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' WITH NULL '' NO DEFAULTS into airlineWithNA")
+        flinkDDFManager.sql("load '" + filePath + "' WITH NULL '' NO DEFAULTS into airlineWithNA", FlinkConstants.ENGINE_NAME_FLINK)
         ddf = flinkDDFManager.getDDFByName("airlineWithNA")
     }
     ddf
@@ -68,9 +70,9 @@ class BaseSpec extends FlatSpec with Matchers {
       ddf = flinkDDFManager.getDDFByName("year_names")
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql("create table year_names (Year_num int,Name string)")
+        flinkDDFManager.sql("create table year_names (Year_num int,Name string)", FlinkConstants.ENGINE_NAME_FLINK)
         val filePath = getClass.getResource("/year_names.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into year_names")
+        flinkDDFManager.sql("load '" + filePath + "' into year_names", FlinkConstants.ENGINE_NAME_FLINK)
         ddf = flinkDDFManager.getDDFByName("year_names")
     }
     ddf
@@ -84,9 +86,9 @@ class BaseSpec extends FlatSpec with Matchers {
       case e: Exception =>
         flinkDDFManager.sql("CREATE TABLE mtcars ("
           + "mpg double,cyl int, disp double, hp int, drat double, wt double, qsec double, vs int, am int, gear int, carb int"
-          + ")")
+          + ")", FlinkConstants.ENGINE_NAME_FLINK)
         val filePath = getClass.getResource("/mtcars").getPath
-        flinkDDFManager.sql("load '" + filePath + "'  delimited by ' '  into mtcars")
+        flinkDDFManager.sql("load '" + filePath + "'  delimited by ' '  into mtcars", FlinkConstants.ENGINE_NAME_FLINK)
         ddf = flinkDDFManager.getDDFByName("mtcars")
     }
     ddf
@@ -97,9 +99,9 @@ class BaseSpec extends FlatSpec with Matchers {
       flinkDDFManager.getDDFByName("regression_data")
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql("create table regression_data (col1 double, col2 double)")
+        flinkDDFManager.sql("create table regression_data (col1 double, col2 double)", FlinkConstants.ENGINE_NAME_FLINK)
         val filePath = getClass.getResource("/regressionData.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into regression_data")
+        flinkDDFManager.sql("load '" + filePath + "' into regression_data", FlinkConstants.ENGINE_NAME_FLINK)
         flinkDDFManager.getDDFByName("regression_data")
     }
   }
@@ -114,9 +116,9 @@ class BaseSpec extends FlatSpec with Matchers {
       flinkDDFManager.getDDFByName("user_ratings")
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql("create table user_ratings (user_id int, item_id int,rating double)")
+        flinkDDFManager.sql("create table user_ratings (user_id int, item_id int,rating double)", FlinkConstants.ENGINE_NAME_FLINK)
         val filePath = getClass.getResource("/ratings.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into user_ratings")
+        flinkDDFManager.sql("load '" + filePath + "' into user_ratings", FlinkConstants.ENGINE_NAME_FLINK)
         flinkDDFManager.getDDFByName("user_ratings")
     }
   }

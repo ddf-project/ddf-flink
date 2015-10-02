@@ -17,11 +17,11 @@ class FlinkModel(rawModel: Predictor[_], rh: ReflectHelper) extends Model(rawMod
 
   val predictMethod = modelMirror.reflectMethod(predictMethodSymbol)
 
-  def getTestingType = rh.getDataSetType(DatasetTypes.test)
+  def getTestingType: Seq[Class[_]] = rh.getDataSetType(DatasetTypes.test)
 
-  def getResultType = rh.getDataSetType(DatasetTypes.result)
+  def getResultType: Seq[Class[_]] = rh.getDataSetType(DatasetTypes.result)
 
-  def pmap = ParameterMap.Empty
+  def pmap: ParameterMap = ParameterMap.Empty
 
   def predict(dataset: DataSet[_]): DataSet[_] = {
     predictMethod(dataset, pmap, rh.predictOperator).asInstanceOf[DataSet[_]]

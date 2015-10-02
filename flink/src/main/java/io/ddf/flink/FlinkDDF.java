@@ -9,8 +9,14 @@ import io.ddf.ml.ISupportML;
 
 public class FlinkDDF extends DDF {
 
-    public FlinkDDF(DDFManager manager, Object data, Class<?>[] typeSpecs, String namespace, String name, Schema schema) throws DDFException {
-        super(manager, data, typeSpecs, manager.getEngineName(), namespace, name, schema);
+    public FlinkDDF(DDFManager manager,
+                    Object data,
+                    Class<?>[] typeSpecs,
+                    String engineName,
+                    String namespace,
+                    String name,
+                    Schema schema) throws DDFException {
+        super(manager, data, typeSpecs, engineName, namespace, name, schema);
     }
 
     @Override

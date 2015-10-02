@@ -7,16 +7,18 @@ import io.ddf.content.Schema.Column
 import io.ddf.content.{Schema, SqlResult, SqlTypedResult}
 import io.ddf.datasource.{DataFormat, DataSourceDescriptor}
 import io.ddf.etl.ASqlHandler
+import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.content.SqlSupport._
 import io.ddf.flink.content.{Column2RowTypeInfo, RepresentationHandler}
 import io.ddf.flink.utils.{Joins, Sorts, StringArrayCsvInputFormat}
-import io.ddf.{DDF, DDFManager}
+import io.ddf.{TableNameReplacer, DDF, DDFManager}
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.typeinfo.{RenamingProxyTypeInfo, RowTypeInfo}
 import org.apache.flink.api.table.{Row, Table}
 import org.apache.flink.core.fs.Path
+import io.ddf.flink.utils.Misc._
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
@@ -80,8 +82,8 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
     val (cols, joined: DataSet[Row]) = join(ddf, typeSpecs, table, s)
 
-    val filtered: DataSet[Row] = if (where != null) joined.where(where.expression) else joined
-    val projected: DataSet[Row] = if (group != null) {
+    val filtered: DataSet[Row] = if (!isNull(where)) joined.where(where.expression) else joined
+    val projected: DataSet[Row] = if (!isNull(group)) {
       if (s.project.isStar) {
         filtered.groupBy(group.expression: _*).select(ddf.getSchema.getColumnNames.mkString(","))
       } else {
@@ -91,7 +93,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
       project(s, ddf, filtered)
     }
 
-    val schemaCols = if (cols == null) {
+    val schemaCols = if (isNull(cols)) {
       def typeInfo: RowTypeInfo = projected.getType() match {
         case r: RenamingProxyTypeInfo[Row] => r.getUnderlyingType.asInstanceOf[RowTypeInfo]
         case t: RowTypeInfo => t
@@ -157,7 +159,19 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
   override def sql2ddf(command: String, schema: Schema, dataFormat: DataFormat): DDF = sql2ddf(command)
 
-  def sql2List(command: String): (Schema, util.List[String]) = {
+  override def sql2ddfHandle(command: String, schema: Schema, dataSource: DataSourceDescriptor, dataFormat: DataFormat, tableNameReplacer: TableNameReplacer): DDF = {
+    sql2ddf(command)
+  }
+
+  /**
+   * Parses a given sql string statement and performs corresponding action.
+   * The limit option is only considered for a select statement.
+   * Note: the limit parameter has preference over the limit specified in the string query.
+   * @param command
+   * @param limit
+   * @return schema and rows
+   */
+  def sql2List(command: String, limit: Option[Integer] = None): (Schema, util.List[String]) = {
     val fn = parse(command)
     fn match {
       case c: Create =>
@@ -171,7 +185,13 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
         (ddf.getSchema, Collections.singletonList("0")) //seqAsJavaList(table.collect().map(_.toString()))
 
       case s: Select =>
-        val ddf = select2ddf(theDDF, s)
+
+        val selectStmt = limit.map {
+          resultLimit =>
+            Select(s.project, s.relations, s.where, s.group, s.order, resultLimit)
+        }.getOrElse(s)
+
+        val ddf = select2ddf(theDDF, selectStmt)
         val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
         (ddf.getSchema, seqAsJavaList(table.collect().map(_.toString())))
     }
@@ -182,14 +202,14 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   val tTypeSpecs: Array[Class[_]] = Array(classOf[Table])
   val dsoTypeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
 
-  override def sql(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlResult = ???
+  override def sql(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlResult = {
+    val res = sql2List(command, Option(maxRows))
+    new SqlResult(res._1, res._2)
+  }
 
   override def sql(command: String, maxRows: Integer): SqlResult = sql(command, maxRows, null)
 
-  override def sql(command: String): SqlResult = {
-    val res = sql2List(command)
-    new SqlResult(res._1, res._2)
-  }
+  override def sql(command: String): SqlResult = sql(command, null, null)
 
   override def sql2ddf(command: String, schema: Schema, dataSource: DataSourceDescriptor, dataFormat: DataFormat): DDF = ???
 

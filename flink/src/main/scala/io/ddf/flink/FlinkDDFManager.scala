@@ -5,6 +5,7 @@ import java.util.UUID
 
 import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
+import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkConstants._
 import io.ddf.flink.content.RepresentationHandler
 import io.ddf.flink.utils.Utils
@@ -43,7 +44,7 @@ class FlinkDDFManager extends DDFManager {
     ddf
   }
 
-  def getExecutionEnvironment = flinkExecutionEnvironment
+  def getExecutionEnvironment: ExecutionEnvironment = flinkExecutionEnvironment
 
   def getColumnInfo(sampleData: Seq[Array[String]],
                     hasHeader: Boolean = false,
@@ -77,8 +78,9 @@ class FlinkDDFManager extends DDFManager {
 
   private def createExecutionEnvironment: ExecutionEnvironment = {
     val isLocal = java.lang.Boolean.parseBoolean(Config.getValue(ENGINE_NAME_FLINK, "local"))
-    if (isLocal) ExecutionEnvironment.getExecutionEnvironment
-    else {
+    if (isLocal) {
+      ExecutionEnvironment.getExecutionEnvironment
+    } else {
       val host = Config.getValue(ENGINE_NAME_FLINK, "host")
       val port = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME_FLINK, "port"))
       val parallelism = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME_FLINK, "parallelism"))
@@ -86,11 +88,17 @@ class FlinkDDFManager extends DDFManager {
     }
   }
 
-  override def transfer(fromEngine: String, ddfURI: String): DDF = ???
+  override def transfer(fromEngine: String, ddfURI: String): DDF = {
+    throw new DDFException("transfer is not supported for Flink", new UnsupportedOperationException)
+  }
 
-  override def getOrRestoreDDFUri(ddfURI: String): DDF = null
+  override def getOrRestoreDDFUri(ddfURI: String): DDF = {
+    throw new DDFException("this is currently unsupported", new UnsupportedOperationException)
+  }
 
-  override def getOrRestoreDDF(uuid: UUID): DDF = null
+  override def getOrRestoreDDF(uuid: UUID): DDF = {
+    throw new DDFException("this is currently unsupported", new UnsupportedOperationException)
+  }
 }
 
 object FlinkConstants {

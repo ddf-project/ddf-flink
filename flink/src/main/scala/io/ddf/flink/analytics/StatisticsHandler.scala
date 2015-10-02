@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
 
 class SummaryReducerFn extends GroupReduceFunction[(Int, String), (Int, Summary)] {
   def computeSummary(numbers: Array[Double], countNA: Long): Summary = {
-    var summary: Summary = null
+    var summary: Summary = new Summary()
     if (numbers.nonEmpty) {
       summary = new Summary(numbers.toArray)
       summary.addToNACount(countNA)

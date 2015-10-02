@@ -16,12 +16,18 @@ import scala.collection.JavaConversions._
 
 class JoinHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandleJoins {
 
-  override def join(anotherDDF: DDF, joinType: JoinType, byColumns: util.List[String], byLeftColumns: util.List[String], byRightColumns: util.List[String]): DDF = {
+  override def join(anotherDDF: DDF,
+                    joinType: JoinType,
+                    byColumns: util.List[String],
+                    byLeftColumns: util.List[String],
+                    byRightColumns: util.List[String]): DDF = {
+
     val leftTable = getDDF.getRepresentationHandler.get(Array(classOf[DataSet[_]], classOf[Row]): _*).asInstanceOf[DataSet[Row]]
     val rightTable = anotherDDF.getRepresentationHandler.get(Array(classOf[DataSet[_]], classOf[Row]): _*).asInstanceOf[DataSet[Row]]
     val leftSchema = getDDF.getSchema
     val rightSchema = anotherDDF.getSchema
-    val (joinedColNames: Seq[Column], joinedDataSet: DataSet[Row]) = Joins.joinDataSets(joinType, byColumns, byLeftColumns, byRightColumns, leftTable, rightTable, leftSchema, rightSchema)
+    val (joinedColNames: Seq[Column], joinedDataSet: DataSet[Row]) =
+      Joins.joinDataSets(joinType, byColumns, byLeftColumns, byRightColumns, leftTable, rightTable, leftSchema, rightSchema)
 
     val newTableName = this.getDDF.getSchemaHandler.newTableName()
     val joinedSchema = new Schema(newTableName, joinedColNames.toList)

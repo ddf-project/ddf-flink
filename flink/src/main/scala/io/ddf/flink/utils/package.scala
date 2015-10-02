@@ -30,6 +30,7 @@ package object utils {
 
   object Misc extends Serializable {
 
+    def isNull(any: Any):Boolean = Option(any).isEmpty
 
     class CovarianceCounter extends Accumulator[(Double, Double), java.lang.Double] {
 

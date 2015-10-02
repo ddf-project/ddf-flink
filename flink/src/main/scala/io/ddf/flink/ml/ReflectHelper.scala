@@ -52,10 +52,11 @@ class ReflectHelper(className: String) {
 
 
   def getObject(symbol: Symbol): Any = {
-    if (symbol.isMethod)
+    if (symbol.isMethod) {
       singletonMirror.reflectMethod(symbol.asMethod).apply()
-    else
+    } else {
       singletonMirror.reflectField(symbol.asTerm).get
+    }
   }
 
   def getType(msym: Symbol, argPos: Int): Seq[Class[_]] = {
@@ -100,7 +101,7 @@ class ReflectHelper(className: String) {
     new FlinkModel(modelObject.asInstanceOf[Predictor[_]], this)
   }
 
-  def getMLOps = {
+  private def getMLOps = {
     case class Operations(fitOp: ru.Symbol, predictOp: ru.Symbol)
     var ops = Operations(null, null)
     val members = mlModuleSymbol.typeSignature.members.filter(m => m.isImplicit && m.isMethod).map(m => m -> m.asInstanceOf[MethodSymbol].returnType)

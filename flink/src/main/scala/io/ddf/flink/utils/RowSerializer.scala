@@ -19,7 +19,7 @@ class RowSerializer(fieldSerializers: Array[TypeSerializer[Any]])
 
   override def getLength: Int = -1
 
-  override def duplicate = this
+  override def duplicate: RowSerializer = this
 
   override def createInstance: Row = {
     new Row(fieldSerializers.length)
