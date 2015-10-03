@@ -49,6 +49,20 @@ class BaseSpec extends FlatSpec with Matchers {
     ddf
   }
 
+  def loadAirlineDDFWithoutDefault(): DDF = {
+    var ddf: DDF = null
+    try {
+      ddf = flinkDDFManager.getDDFByName("airline")
+    } catch {
+      case e: Exception =>
+        flinkDDFManager.sql("create table airline (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME_FLINK)
+        val filePath = getClass.getResource("/airline.csv").getPath
+        flinkDDFManager.sql("load '" + filePath + "' WITH NULL '' NO DEFAULTS into airline", FlinkConstants.ENGINE_NAME_FLINK)
+        ddf = flinkDDFManager.getDDFByName("airline")
+    }
+    ddf
+  }
+
   def loadAirlineNADDF(): DDF = {
     var ddf: DDF = null
     try {

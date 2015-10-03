@@ -1,6 +1,8 @@
 package io.ddf.flink.analytics
 
-import io.ddf.analytics.AStatisticsSupporter
+import java.util
+
+import io.ddf.analytics.{NumericSimpleSummary, CategoricalSimpleSummary, AStatisticsSupporter}
 import io.ddf.flink.BaseSpec
 
 class StatisticsHandlerSpec extends BaseSpec {
@@ -50,4 +52,43 @@ class StatisticsHandlerSpec extends BaseSpec {
     first.getX should be(-24)
     first.getY should be(10.0)
   }
+
+  it should "compute simple summary" in {
+    val airlineDDF = loadAirlineDDFWithoutDefault()
+    Array("Year", "Month", "DayOfMonth", "UniqueCarrier").foreach(airlineDDF.setAsFactor)
+    val simpleSummary = airlineDDF.getStatisticsSupporter.getSimpleSummary
+
+    simpleSummary.find(s => s.getColumnName == "Year").get match {
+      case cat: CategoricalSimpleSummary =>
+        val categoryValues: util.List[String] = cat.getValues
+        categoryValues.size should be(3)
+        categoryValues should contain allOf("2008", "2009", "2010")
+    }
+
+    simpleSummary.find(s => s.getColumnName == "UniqueCarrier").get match {
+      case cat: CategoricalSimpleSummary =>
+        val categoryValues: util.List[String] = cat.getValues
+        categoryValues.size should be(1)
+        categoryValues should contain("WN")
+    }
+
+    simpleSummary.find(s => s.getColumnName == "LateAircraftDelay").get match {
+      case num: NumericSimpleSummary =>
+        num.getMax should be(72.0)
+        num.getMin should be(7.0)
+    }
+
+    simpleSummary.find(s => s.getColumnName == "ActualElapsedTime").get match {
+      case num: NumericSimpleSummary =>
+        num.getMax should be(324.0)
+        num.getMin should be(49.0)
+    }
+
+    simpleSummary.find(s => s.getColumnName == "DepDelay").get match {
+      case num: NumericSimpleSummary =>
+        num.getMax should be(94.0)
+        num.getMin should be(-4.0)
+    }
+  }
+
 }

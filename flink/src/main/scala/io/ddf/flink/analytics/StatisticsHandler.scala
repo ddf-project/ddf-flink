@@ -6,10 +6,12 @@ import java.{lang, util}
 import com.clearspring.analytics.stream.quantile.QDigest
 import io.ddf.DDF
 import io.ddf.analytics.AStatisticsSupporter.FiveNumSummary
-import io.ddf.analytics.{SimpleSummary, AStatisticsSupporter, Summary}
-import io.ddf.content.Schema.Column
+import io.ddf.analytics._
+import io.ddf.content.Schema
+import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.utils.Misc
+import io.ddf.flink.utils.Misc._
 import org.apache.flink.api.common.functions.GroupReduceFunction
 import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.Row
@@ -69,10 +71,10 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     }
   }
 
-  private def getDoubleColumn(columnName: String): Option[DataSet[Double]] = Misc.getDoubleColumn(ddf,columnName)
+  private def getDoubleColumn(columnName: String): Option[DataSet[Double]] = Misc.getDoubleColumn(ddf, columnName)
 
   override protected def getSummaryImpl: Array[Summary] = {
-    val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
+    val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
     val colSize = ddf.getColumnNames.size()
 
     val colData: GroupedDataSet[(Int, String)] = data.flatMap { row =>
@@ -127,15 +129,15 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   override def getVectorCor(xColumnName: String, yColumnName: String): Double = {
-    ddf.getAggregationHandler.computeCorrelation(xColumnName,yColumnName)
+    ddf.getAggregationHandler.computeCorrelation(xColumnName, yColumnName)
   }
 
   override def getVectorCovariance(xColumnName: String, yColumnName: String): Double = {
     val manager = this.getManager.asInstanceOf[FlinkDDFManager]
-    val dataSet: DataSet[Row] = ddf.getRepresentationHandler.get(classOf[DataSet[_]],classOf[Row]).asInstanceOf[DataSet[Row]]
+    val dataSet: DataSet[Row] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Row]).asInstanceOf[DataSet[Row]]
     val xIndex = ddf.getSchema.getColumnIndex(xColumnName)
     val yIndex = ddf.getSchema.getColumnIndex(yColumnName)
-    Misc.collectCovariance(manager.getExecutionEnvironment,dataSet,xIndex,yIndex)
+    Misc.collectCovariance(manager.getExecutionEnvironment, dataSet, xIndex, yIndex)
   }
 
   override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = {
@@ -161,8 +163,46 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     }
   }
 
-  //TODO
-  override protected def getSimpleSummaryImpl: Array[SimpleSummary] = ???
+  override protected def getSimpleSummaryImpl: Array[SimpleSummary] = {
+    val ddfColumns: util.List[Column] = ddf.getSchema.getColumns
+    val categoricalColumns = ddfColumns.filter(_.getColumnClass == Schema.ColumnClass.FACTOR)
+    val numericalColumnTypes = Seq(ColumnType.BIGINT, ColumnType.DOUBLE, ColumnType.INT, ColumnType.FLOAT)
+    val numericalColumns = ddfColumns.filter(c => numericalColumnTypes.contains(c.getType))
+
+    val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
+    val categoricalSummaries: Array[CategoricalSimpleSummary] = categoricalColumns.map {
+      col =>
+        val columnIndex: Int = ddf.getColumnIndex(col.getName)
+        val columnValues = data.map(d => Tuple1(d(columnIndex).toString)).distinct(0).collect().map(_._1).toList
+        val categoricalSimpleSummary: CategoricalSimpleSummary = new CategoricalSimpleSummary()
+        categoricalSimpleSummary.setColumnName(col.getName)
+        categoricalSimpleSummary.setValues(columnValues)
+        categoricalSimpleSummary
+    }.toArray
+
+    val numericalSummaries = numericalColumns.map {
+      col =>
+        val columnIndex: Int = ddf.getColumnIndex(col.getName)
+        val numericalSummary = new NumericSimpleSummary()
+        numericalSummary.setColumnName(col.getName)
+        val (minValue, maxValue) = getMinAndMaxValue(data, columnIndex)
+        numericalSummary.setMin(minValue)
+        numericalSummary.setMax(maxValue)
+        numericalSummary
+    }
+    categoricalSummaries ++ numericalSummaries
+  }
+
+  private def getMinAndMaxValue(data: DataSet[Array[Object]], columnIndex: Int): (Double, Double) = {
+    val tupleDataset = data.filter { d => !isNull(d(columnIndex)) }.map {
+      d =>
+        val numericValue = d(columnIndex).toString.toDouble
+        (numericValue, numericValue)
+    }
+    val result = tupleDataset.min(0).andMax(1)
+    result.collect().head
+  }
+
 }
 
 
