@@ -194,13 +194,15 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   private def getMinAndMaxValue(data: DataSet[Array[Object]], columnIndex: Int): (Double, Double) = {
-    val tupleDataset = data.filter { d => !isNull(d(columnIndex)) }.map {
+    val defaultValue = (Double.NaN,Double.NaN)
+    val notNullValues: DataSet[Array[Object]] = data.filter { d => !isNull(d(columnIndex)) }
+    val tupleDataset = notNullValues.map {
       d =>
         val numericValue = d(columnIndex).toString.toDouble
         (numericValue, numericValue)
     }
-    val result = tupleDataset.min(0).andMax(1)
-    result.collect().head
+    val aggregatedResult = tupleDataset.min(0).andMax(1)
+    aggregatedResult.collect().headOption.getOrElse(defaultValue)
   }
 
 }

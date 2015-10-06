@@ -30,25 +30,6 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
   def parse(input: String): Function = parser.parse(input)
 
-  override def sql2ddf(command: String): DDF = {
-    val fn = parse(command)
-    fn match {
-      case c: Create =>
-        val ddf = create2ddf(c)
-        this.getManager.addDDF(ddf)
-        ddf
-
-      case l: Load =>
-        val ddf = load2ddf(l)
-        ddf
-
-      case s: Select =>
-        val newDDF = select2ddf(theDDF, s)
-        this.getManager.addDDF(newDDF)
-        newDDF
-    }
-  }
-
   protected def load2ddf(l: Load) = {
     val ddf = this.getManager.getDDFByName(l.tableName)
     val env = this.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
@@ -72,7 +53,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   }
 
 
-  protected def select2ddf(ddf: DDF, s: Select): DDF = {
+  protected def select2ddf(ddf: DDF, s: Select, optionalSchema:Option[Schema] = None): DDF = {
     s.validate
     val ddf = this.getManager.getDDFByName(s.relations.head.getTableName)
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
@@ -104,7 +85,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     }
 
     val tableName = ddf.getSchemaHandler.newTableName
-    val schema = new Schema(tableName, schemaCols)
+    val schema = optionalSchema.getOrElse(new Schema(tableName, schemaCols))
     //now order by and limit
     val sorted: DataSet[Row] = sort(s, projected, schema)
     val finalDataSet = limit(s, sorted)
@@ -139,7 +120,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     val joins = s.relations.filter(i => i.isInstanceOf[JoinRelation])
     var cols: List[Column] = null
     var joined = table
-    joins.map { j =>
+    joins.foreach { j =>
       val join = j.asInstanceOf[JoinRelation]
       val ddf2 = this.getManager.getDDFByName(join.withTableName)
       val table2: DataSet[Row] = ddf2.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[DataSet[Row]]
@@ -153,18 +134,44 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     (cols, joined)
   }
 
-  override def sql2ddf(command: String, schema: Schema): DDF = sql2ddf(command)
+  override def sql2ddf(command: String): DDF = sql2ddf(command, null, null, null)
 
-  override def sql2ddf(command: String, dataFormat: DataFormat): DDF = sql2ddf(command)
+  override def sql2ddf(command: String, schema: Schema): DDF = sql2ddf(command, schema, null, null)
 
-  override def sql2ddf(command: String, schema: Schema, dataFormat: DataFormat): DDF = sql2ddf(command)
+  override def sql2ddf(command: String, dataFormat: DataFormat): DDF = sql2ddf(command, null, null, dataFormat)
+
+  override def sql2ddf(command: String, schema: Schema, dataFormat: DataFormat): DDF = sql2ddf(command, schema, null, dataFormat)
+
+
+
+  override def sql2ddf(command: String, schema: Schema, dataSource: DataSourceDescriptor, dataFormat: DataFormat): DDF = {
+    val fn = parse(command)
+    fn match {
+      case c: Create =>
+        val ddf = create2ddf(c)
+        this.getManager.addDDF(ddf)
+        ddf
+
+      case l: Load =>
+        val ddf = load2ddf(l)
+        ddf
+
+      case s: Select =>
+        val newDDF = select2ddf(theDDF, s, Option(schema))
+        this.getManager.addDDF(newDDF)
+        newDDF
+    }
+  }
+
+  override def sql2ddf(command: String, schema: Schema, dataSourceDescriptor: DataSourceDescriptor): DDF = sql2ddf(command, schema, dataSourceDescriptor, null)
+
 
   override def sql2ddfHandle(command: String, schema: Schema, dataSource: DataSourceDescriptor, dataFormat: DataFormat, tableNameReplacer: TableNameReplacer): DDF = {
-    sql2ddf(command)
+    sql2ddf(command, schema, dataSource, dataFormat)
   }
 
   /**
-   * Parses a given sql string statement and performs corresponding action.
+    * Parses a given sql string statement and performs corresponding action.
    * The limit option is only considered for a select statement.
    * Note: the limit parameter has preference over the limit specified in the string query.
    * @param command
@@ -211,11 +218,6 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
   override def sql(command: String): SqlResult = sql(command, null, null)
 
-  override def sql2ddf(command: String, schema: Schema, dataSource: DataSourceDescriptor, dataFormat: DataFormat): DDF = ???
-
-  override def sql2ddf(command: String, schema: Schema, dataSource: DataSourceDescriptor): DDF = {
-    sql2ddf(command, schema, dataSource, null)
-  }
 
   override def sqlTyped(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlTypedResult = {
     val sqlResult = sql(command)
@@ -229,5 +231,4 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   override def sqlTyped(command: String): SqlTypedResult = {
     sqlTyped(command, null, null)
   }
-
 }

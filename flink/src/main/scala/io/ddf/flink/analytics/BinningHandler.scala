@@ -29,24 +29,24 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning 
     this.breaks = inputBreaks
 
     binningType match {
-      case BinningType.CUSTOM ⇒
+      case BinningType.CUSTOM =>
         if (breaks == null) throw new DDFException("Please enter valid break points")
         if (breaks.sorted.deep != breaks.deep) throw new DDFException("Please enter increasing breaks")
-      case BinningType.EQUAlFREQ ⇒ breaks = {
+      case BinningType.EQUAlFREQ => breaks = {
         if (numBins < 2) throw new DDFException("Number of bins cannot be smaller than 2")
         getQuantilesFromNumBins(colMeta.getName, numBins)
       }
-      case BinningType.EQUALINTERVAL ⇒ breaks = {
+      case BinningType.EQUALINTERVAL => breaks = {
         if (numBins < 2) throw new DDFException("Number of bins cannot be smaller than 2")
         getIntervalsFromNumBins(colMeta.getName, numBins).map(_.doubleValue())
       }
-      case _ ⇒ throw new DDFException(String.format("Binning type %s is not supported", binningTypeString))
+      case _ => throw new DDFException(String.format("Binning type %s is not supported", binningTypeString))
     }
     var intervals = createIntervals(breaks, includeLowest, right)
 
     val newDDF = Misc.getBinned(ddf, breaks, column, intervals, includeLowest, right)
     //remove single quote in intervals
-    intervals = intervals.map(x ⇒ x.replace("'", ""))
+    intervals = intervals.map(x => x.replace("'", ""))
     newDDF.getSchemaHandler.setAsFactor(column).setLevels(intervals.toList.asJava)
     newDDF
   }
@@ -56,7 +56,7 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning 
     val formatter = new DecimalFormat("#." + Iterator.fill(decimalPlaces)("#").mkString(""))
     var intervals: Array[String] = null
     intervals = (0 to breaks.length - 2).map {
-      i ⇒
+      i =>
         if (right)
           "'(%s,%s]'".format(formatter.format(breaks(i)), formatter.format(breaks(i + 1)))
         else
@@ -120,38 +120,38 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning 
 
   class Intervals(val stopping: List[Double], private val includeLowest: Boolean = false, right: Boolean = true,
                   formatter: DecimalFormat) extends Serializable {
-    val intervals = createIntervals(Array[(Double ⇒ Boolean, String)](), stopping, first = true)
+    val intervals = createIntervals(Array[(Double => Boolean, String)](), stopping, first = true)
 
     @tailrec
-    private def createIntervals(result: Array[(Double ⇒ Boolean, String)], stopping: List[Double], first: Boolean): Array[(Double ⇒ Boolean, String)] = stopping match {
-      case Nil ⇒ result
-      case x :: Nil ⇒ result
-      case x :: y :: xs ⇒
+    private def createIntervals(result: Array[(Double => Boolean, String)], stopping: List[Double], first: Boolean): Array[(Double => Boolean, String)] = stopping match {
+      case Nil => result
+      case x :: Nil => result
+      case x :: y :: xs =>
         if (includeLowest && right)
           if (first)
-            createIntervals(result :+((z: Double) ⇒ z >= x && z <= y, "[" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
+            createIntervals(result :+((z: Double) => z >= x && z <= y, "[" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
           else
-            createIntervals(result :+((z: Double) ⇒ z > x && z <= y, "(" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
+            createIntervals(result :+((z: Double) => z > x && z <= y, "(" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
 
         else if (includeLowest && !right)
           if (xs == Nil)
-            createIntervals(result :+((z: Double) ⇒ z >= x && z <= y, "[" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
+            createIntervals(result :+((z: Double) => z >= x && z <= y, "[" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
           else
-            createIntervals(result :+((z: Double) ⇒ z >= x && z < y, "[" + formatter.format(x) + "," + formatter.format(y) + ")"), y :: xs, first = false)
+            createIntervals(result :+((z: Double) => z >= x && z < y, "[" + formatter.format(x) + "," + formatter.format(y) + ")"), y :: xs, first = false)
 
         else if (!includeLowest && right)
-          createIntervals(result :+((z: Double) ⇒ z > x && z <= y, "(" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
+          createIntervals(result :+((z: Double) => z > x && z <= y, "(" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
 
         else
-          createIntervals(result :+((z: Double) ⇒ z >= x && z < y, "[" + formatter.format(x) + "," + formatter.format(y) + ")"), y :: xs, first = false)
+          createIntervals(result :+((z: Double) => z >= x && z < y, "[" + formatter.format(x) + "," + formatter.format(y) + ")"), y :: xs, first = false)
     }
 
     def findInterval(aNum: Double): Option[String] = {
       intervals.find {
-        case (f, y) ⇒ f(aNum)
+        case (f, y) => f(aNum)
       } match {
-        case Some((x, y)) ⇒ Option(y)
-        case None ⇒ Option(null)
+        case Some((x, y)) => Option(y)
+        case None => Option(null)
       }
     }
   }
@@ -195,6 +195,7 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning 
     bins
   }
 
-  //TODO
-  override def getVectorApproxHistogram(column: String, numBins: Int): util.List[HistogramBin] = ???
+  override def getVectorApproxHistogram(column: String, numBins: Int): util.List[HistogramBin] = {
+    getVectorHistogram(column, numBins)
+  }
 }

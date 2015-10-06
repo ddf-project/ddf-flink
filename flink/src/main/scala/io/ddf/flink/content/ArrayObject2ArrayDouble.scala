@@ -39,7 +39,7 @@ class ArrayObject2ArrayDouble(@transient ddf: DDF) extends ConvertFunction(ddf) 
 import io.ddf.content.Schema.{ColumnType, Column}
 import scala.collection.JavaConversions._
 import io.ddf.exception.DDFException
-
+import io.ddf.flink.utils.Misc.isNull
 /**
  *
  */
@@ -51,21 +51,21 @@ trait ObjectToDoubleMapper {
     ).toArray
   }
 
-  private def getDoubleMapper(colType: ColumnType): Object ⇒ Option[Double] = {
+  private def getDoubleMapper(colType: ColumnType): Object => Option[Double] = {
     colType match {
-      case ColumnType.DOUBLE ⇒ {
-        case obj ⇒ if (obj != null) Some(obj.asInstanceOf[Double]) else None
+      case ColumnType.DOUBLE => {
+        case obj => if (!isNull(obj)) Some(obj.asInstanceOf[Double]) else None
       }
 
-      case ColumnType.INT ⇒ {
-        case obj ⇒ if (obj != null) Some(obj.asInstanceOf[Int].toDouble) else None
+      case ColumnType.INT => {
+        case obj => if (!isNull(obj)) Some(obj.asInstanceOf[Int].toDouble) else None
       }
 
-      case ColumnType.STRING ⇒ {
-        case _ ⇒ throw new DDFException("Cannot convert string to double")
+      case ColumnType.STRING => {
+        case _ => throw new DDFException("Cannot convert string to double")
       }
 
-      case e ⇒ throw new DDFException("Cannot convert to double")
+      case e => throw new DDFException("Cannot convert to double")
     }
   }
 }
