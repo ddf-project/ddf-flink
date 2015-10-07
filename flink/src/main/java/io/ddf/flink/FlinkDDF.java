@@ -21,7 +21,11 @@ public class FlinkDDF extends DDF {
 
     @Override
     public DDF copy() throws DDFException {
-        return null;
+        String ddfName = this.getName();
+        DDF newDDF = this.sql2ddf("select * from " + ddfName);
+        newDDF.getMetaDataHandler().copy(this.getMetaDataHandler());
+        newDDF.getPersistenceHandler().setPersistable(this.getPersistenceHandler().isPersistable());
+        return newDDF;
     }
 
     public FlinkDDF(DDFManager manager, DDFManager defaultManagerIfNull) throws DDFException {

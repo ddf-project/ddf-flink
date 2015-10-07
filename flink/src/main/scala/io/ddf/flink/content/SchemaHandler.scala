@@ -3,6 +3,7 @@ package io.ddf.flink.content
 import java.util
 import java.util.{List, Map}
 
+import io.ddf.content.Schema.{ColumnType, Column}
 import io.ddf.content.{IHandleRepresentations, Schema}
 import io.ddf.exception.DDFException
 import io.ddf.{DDF, Factor}
@@ -59,7 +60,20 @@ class SchemaHandler(ddf:DDF) extends io.ddf.content.SchemaHandler(ddf){
       }
     }
   }
+
+  override def setFactorLevelsForStringColumns(xCols: Array[String]): Unit = {
+    var i: Int = 0
+    while (i < xCols.length) {
+      val c: Schema.Column = this.getColumn(xCols(i))
+      if (c.getType.equals(ColumnType.STRING) || c.getType.equals(ColumnType.BOOLEAN)) {
+        this.setAsFactor(c.getName)
+      }
+      i += 1
+    }
+  }
 }
+
+
 import java.lang.{Integer => JInt}
 import java.util.{HashMap => JHMap, List => JList, Map => JMap}
 

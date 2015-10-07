@@ -2,12 +2,14 @@ package io.ddf.flink.content
 
 import java.util
 
-import io.ddf.content.Schema.{ColumnClass, ColumnType, Column}
+import io.ddf.content.Schema.{Column, ColumnClass, ColumnType}
 import io.ddf.flink.BaseSpec
+
 import scala.collection.JavaConversions._
 
 class SchemaHandlerSpec extends BaseSpec {
   val manager = flinkDDFManager
+
   it should "get schema" in {
     ddf.getSchema should not be null
   }
@@ -37,7 +39,7 @@ class SchemaHandlerSpec extends BaseSpec {
     val cols = Array(7, 8, 9, 10).map {
       idx => schemaHandler.getColumn(schemaHandler.getColumnName(idx))
     }
-    println("",cols.mkString(","))
+    println("", cols.mkString(","))
     assert(cols(0).getOptionalFactor.getLevelCounts.get("1") === 14)
     assert(cols(0).getOptionalFactor.getLevelCounts.get("0") === 18)
     assert(cols(1).getOptionalFactor.getLevelCounts.get("1") === 13)
@@ -49,18 +51,29 @@ class SchemaHandlerSpec extends BaseSpec {
     assert(cols(3).getOptionalFactor.getLevelCounts.get("2") === 10)
   }
 
+  //TODO support cast
+  /*it should "test get factor with long column" in {
+    loadMtCarsDDF()
+    val ddf = manager.sql2ddf("select mpg, cast(cyl as bigint) as cyl from mtcars")
+    ddf.getSchemaHandler.setAsFactor("cyl")
+    ddf.getSchemaHandler.computeFactorLevelsAndLevelCounts()
+    assert(ddf.getSchemaHandler.getColumn("cyl").getType == ColumnType.BIGINT)
+    assert(ddf.getSchemaHandler.getColumn("cyl").getColumnClass == ColumnClass.FACTOR)
+    assert(ddf.getSchemaHandler.getColumn("cyl").getOptionalFactor.getLevelCounts.get("4") == 11)
+    assert(ddf.getSchemaHandler.getColumn("cyl").getOptionalFactor.getLevelCounts.get("6") == 7)
+    assert(ddf.getSchemaHandler.getColumn("cyl").getOptionalFactor.getLevelCounts.get("8") == 14)
+  }*/
 
-    //TODO support cast
-//  it should "test get factor with long column" in {
-//    val ddf = manager.sql2ddf("select mpg, cast(cyl as bigint) as cyl from mtcars")
-//    ddf.getSchemaHandler.setAsFactor("cyl")
-//    ddf.getSchemaHandler.computeFactorLevelsAndLevelCounts()
-//    assert(ddf.getSchemaHandler.getColumn("cyl").getType == ColumnType.LONG)
-//    assert(ddf.getSchemaHandler.getColumn("cyl").getColumnClass == ColumnClass.FACTOR)
-//    assert(ddf.getSchemaHandler.getColumn("cyl").getOptionalFactor.getLevelCounts.get("4") == 11)
-//    assert(ddf.getSchemaHandler.getColumn("cyl").getOptionalFactor.getLevelCounts.get("6") == 7)
-//    assert(ddf.getSchemaHandler.getColumn("cyl").getOptionalFactor.getLevelCounts.get("8") == 14)
-//  }
+  it should "test set factor for string columns" in {
+    val ddf = loadAirlineNADDF()
+    assert(ddf.getSchemaHandler.getColumn("Origin").getType == ColumnType.STRING)
+    assert(ddf.getSchemaHandler.getColumn("Origin").getColumnClass == ColumnClass.CHARACTER)
+    ddf.getSchemaHandler.setFactorLevelsForStringColumns(ddf.getSchemaHandler.getColumns.map { col => col.getName }.toArray)
+    ddf.getSchemaHandler.computeFactorLevelsAndLevelCounts()
+    assert(ddf.getSchemaHandler.getColumn("Origin").getType == ColumnType.STRING)
+    assert(ddf.getSchemaHandler.getColumn("Origin").getColumnClass == ColumnClass.FACTOR)
+    assert(ddf.getSchemaHandler.getColumn("Origin").getOptionalFactor.getLevelCounts.size() == 3)
+  }
 
   it should "test get factors for DDF with RDD[Array[Object]]" in {
     val ddf = manager.sql2ddf("select * from mtcars")
@@ -151,5 +164,4 @@ class SchemaHandlerSpec extends BaseSpec {
     assert(cols2(5).getOptionalFactor.getLevelCounts.get("0") === 9.0)
     assert(cols2(4).getOptionalFactor.getLevelCounts.get("3") === 1.0)
   }
-
 }

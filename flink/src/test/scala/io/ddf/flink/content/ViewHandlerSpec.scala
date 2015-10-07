@@ -1,6 +1,7 @@
 package io.ddf.flink.content
 
 import io.ddf.DDF
+import io.ddf.exception.DDFException
 import io.ddf.flink.BaseSpec
 import scala.collection.JavaConversions._
 
@@ -32,5 +33,16 @@ class ViewHandlerSpec extends BaseSpec {
     sample.get(1)(0).asInstanceOf[Double] should not be (sample.get(2)(0).asInstanceOf[Double])
     sample.get(2)(0).asInstanceOf[Double] should not be (sample.get(3)(0).asInstanceOf[Double])
     sample.size should be(10)
+  }
+
+  it should "test sample with percentage" in {
+    val sample = ddf.VIEWS.getRandomSample(0.5, false, 1)
+    sample.VIEWS.head(3) should have size(3)
+  }
+
+  it should "throw an error when sample percentage is invalid" in {
+    intercept[IllegalArgumentException] {
+      ddf.VIEWS.getRandomSample(5.0, false, 1)
+    }
   }
 }

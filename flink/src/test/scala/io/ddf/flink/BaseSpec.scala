@@ -12,22 +12,36 @@ class BaseSpec extends FlatSpec with Matchers {
   def ddf = loadDDF()
 
   def loadDDF(): DDF = {
-    if (lDdf == null)
-      lDdf = flinkDDFManager.loadTable(getClass.getResource("/airline.csv").getPath, ",")
+    val filePath: String = getClass.getResource("/airline.csv").getPath
+    lDdf = Option(lDdf).getOrElse(flinkDDFManager.loadTable(filePath, ","))
     lDdf
   }
 
-  def loadIrisTrain(): DDF = {
+  private def loadCSVIfNotExists(ddfName: String,
+                                 fileName: String,
+                                 columns: Seq[String],
+                                 delimiter: Char = ',',
+                                 isNullSetToDefault: Boolean = false): DDF = {
     try {
-      flinkDDFManager.getDDFByName("iris")
+      flinkDDFManager.getDDFByName(ddfName)
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql("create table iris (flower double, petal double, septal double)", FlinkConstants.ENGINE_NAME_FLINK)
-        val filePath = getClass.getResource("/fisheriris.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into iris", FlinkConstants.ENGINE_NAME_FLINK)
-        flinkDDFManager.getDDFByName("iris")
+        flinkDDFManager.sql(s"create table $ddfName (${columns.mkString(",")})", FlinkConstants.ENGINE_NAME_FLINK)
+        val filePath = getClass.getResource(fileName).getPath
+        flinkDDFManager.sql(s"load '$filePath' delimited by '$delimiter' into $ddfName", FlinkConstants.ENGINE_NAME_FLINK)
+        flinkDDFManager.getDDFByName(ddfName)
     }
   }
+
+  def loadIrisTrain(): DDF = {
+    loadCSVIfNotExists("iris", "/fisheriris.csv", Seq("flower double", "petal double", "septal double"))
+  }
+
+  private val airlineColumns = Seq("Year int", "Month int", "DayofMonth int", "DayOfWeek int", "DepTime int",
+    "CRSDepTime int", "ArrTime int", "CRSArrTime int", "UniqueCarrier string", "FlightNum int", "TailNum string",
+    "ActualElapsedTime int", "CRSElapsedTime int", "AirTime int", "ArrDelay int", "DepDelay int", "Origin string",
+    "Dest string", "Distance int", "TaxiIn int", "TaxiOut int", "Cancelled int", "CancellationCode string",
+    "Diverted string", "CarrierDelay int", "WeatherDelay int", "NASDelay int", "SecurityDelay int", "LateAircraftDelay int")
 
   def loadIrisTest(): DDF = {
     val train = flinkDDFManager.getDDFByName("iris")
@@ -36,17 +50,8 @@ class BaseSpec extends FlatSpec with Matchers {
   }
 
   def loadAirlineDDF(): DDF = {
-    var ddf: DDF = null
-    try {
-      ddf = flinkDDFManager.getDDFByName("airline")
-    } catch {
-      case e: Exception =>
-        flinkDDFManager.sql("create table airline (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME_FLINK)
-        val filePath = getClass.getResource("/airline.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into airline", FlinkConstants.ENGINE_NAME_FLINK)
-        ddf = flinkDDFManager.getDDFByName("airline")
-    }
-    ddf
+    val ddfName = "airline"
+    loadCSVIfNotExists(ddfName, s"/$ddfName.csv", airlineColumns)
   }
 
   def loadAirlineDDFWithoutDefault(): DDF = {
@@ -79,45 +84,21 @@ class BaseSpec extends FlatSpec with Matchers {
 
 
   def loadYearNamesDDF(): DDF = {
-    var ddf: DDF = null
-    try {
-      ddf = flinkDDFManager.getDDFByName("year_names")
-    } catch {
-      case e: Exception =>
-        flinkDDFManager.sql("create table year_names (Year_num int,Name string)", FlinkConstants.ENGINE_NAME_FLINK)
-        val filePath = getClass.getResource("/year_names.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into year_names", FlinkConstants.ENGINE_NAME_FLINK)
-        ddf = flinkDDFManager.getDDFByName("year_names")
-    }
-    ddf
+    val ddfName = "year_names"
+    loadCSVIfNotExists(ddfName, s"/$ddfName.csv", Seq("Year_num int", "Name string"))
   }
 
   def loadMtCarsDDF(): DDF = {
-    var ddf: DDF = null
-    try {
-      ddf = flinkDDFManager.getDDFByName("mtcars")
-    } catch {
-      case e: Exception =>
-        flinkDDFManager.sql("CREATE TABLE mtcars ("
-          + "mpg double,cyl int, disp double, hp int, drat double, wt double, qsec double, vs int, am int, gear int, carb int"
-          + ")", FlinkConstants.ENGINE_NAME_FLINK)
-        val filePath = getClass.getResource("/mtcars").getPath
-        flinkDDFManager.sql("load '" + filePath + "'  delimited by ' '  into mtcars", FlinkConstants.ENGINE_NAME_FLINK)
-        ddf = flinkDDFManager.getDDFByName("mtcars")
-    }
-    ddf
+    val ddfName: String = "mtcars"
+    loadCSVIfNotExists(ddfName, s"/$ddfName",
+      Seq("mpg double", "cyl int", "disp double", "hp int", "drat double", "wt double",
+        "qsec double", "vs int", "am int", "gear int", "carb int"),
+      delimiter = ' ')
   }
 
   def loadRegressionTrain(): DDF = {
-    try {
-      flinkDDFManager.getDDFByName("regression_data")
-    } catch {
-      case e: Exception =>
-        flinkDDFManager.sql("create table regression_data (col1 double, col2 double)", FlinkConstants.ENGINE_NAME_FLINK)
-        val filePath = getClass.getResource("/regressionData.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into regression_data", FlinkConstants.ENGINE_NAME_FLINK)
-        flinkDDFManager.getDDFByName("regression_data")
-    }
+    val ddfName: String = "regression_data"
+    loadCSVIfNotExists(ddfName, "/regressionData.csv", Seq("col1 double", "col2 double"))
   }
 
   def loadRegressionTest(): DDF = {
@@ -126,15 +107,7 @@ class BaseSpec extends FlatSpec with Matchers {
   }
 
   def loadRatingsTrain(): DDF = {
-    try {
-      flinkDDFManager.getDDFByName("user_ratings")
-    } catch {
-      case e: Exception =>
-        flinkDDFManager.sql("create table user_ratings (user_id int, item_id int,rating double)", FlinkConstants.ENGINE_NAME_FLINK)
-        val filePath = getClass.getResource("/ratings.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' into user_ratings", FlinkConstants.ENGINE_NAME_FLINK)
-        flinkDDFManager.getDDFByName("user_ratings")
-    }
+    loadCSVIfNotExists("user_ratings","/ratings.csv",Seq("user_id int","item_id int","rating double"))
   }
 
   def loadRatingsTest(): DDF = {
