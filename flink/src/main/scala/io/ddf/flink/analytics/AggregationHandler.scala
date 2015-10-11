@@ -50,7 +50,7 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     groupColumns = groupedColumns
   }
 
-  def getGroupColumns = groupColumns
+  def getGroupColumns: util.List[String] = groupColumns
 
   private def getMethodName(aggrFunction: AggregateFunction): String = {
     aggrFunction match {
@@ -66,11 +66,10 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
 
   private def getFields(fields: util.List[AggregateField]): Seq[String] = {
     fields.map {
-      field =>
-        if (field.isAggregated) {
-          val methodName = getMethodName(field.getAggregateFunction)
-          s"${field.getColumn}.$methodName"
-        } else field.getColumn
+      case field if field.isAggregated =>
+        val methodName = getMethodName(field.getAggregateFunction)
+        s"${field.getColumn}.$methodName"
+      case field => field.getColumn
     }
   }
 

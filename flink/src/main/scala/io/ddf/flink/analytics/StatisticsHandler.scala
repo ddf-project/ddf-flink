@@ -38,7 +38,7 @@ class SummaryReducerFn extends GroupReduceFunction[(Int, String), (Int, Summary)
       case (colId, value) =>
         colIndex = colId
         //continue if value is not null
-        if (value != null) {
+        if (!isNull(value)) {
           val mayBeDouble = Try(value.toDouble)
           mayBeDouble match {
             case Success(number) =>
@@ -82,11 +82,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
         index =>
           //map each entry with its column index
           val elem = row(index)
-          val elemOpt = if (elem == null) {
-            null
-          } else {
-            elem.toString.trim
-          }
+          val elemOpt: String = Option(elem).map(_.toString.trim).orNull
           (index, elemOpt)
       }
     }.groupBy {
@@ -112,20 +108,20 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
   override def getVectorVariance(columnName: String): Array[lang.Double] = {
     val mayBeSummary = getSummaryVector(columnName)
-    mayBeSummary.isDefined match {
-      case true =>
-        val summary = mayBeSummary.get
-        Array(summary.variance(), summary.stdev())
-      case false => null
-    }
+    mayBeSummary.map {
+      summary =>
+        val result: Array[lang.Double] = Array(summary.variance(), summary.stdev())
+        result
+    }.orNull
   }
 
   override def getVectorMean(columnName: String): lang.Double = {
     val summary = getSummaryVector(columnName)
-    summary.isDefined match {
-      case true => summary.get.mean()
-      case false => null
-    }
+    summary.map {
+      s =>
+        val result: lang.Double = s.mean
+        result
+    }.orNull
   }
 
   override def getVectorCor(xColumnName: String, yColumnName: String): Double = {
@@ -143,10 +139,9 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = {
     //TODO check for a better way - this implementation involves conversion from double to long and then long to double
     val maybeDataSet: Option[DataSet[Double]] = getDoubleColumn(columnName)
-    maybeDataSet.isDefined match {
-      case false => null
-      case true =>
-        val digests = maybeDataSet.get.mapPartition {
+    maybeDataSet.map {
+      ds =>
+        val digests = ds.mapPartition {
           x => Misc.qDigest(x)
         }.reduce {
           (x, y) => QDigest.unionOf(x, y)
@@ -160,7 +155,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
             val quantile: lang.Double = finalDigest.getQuantile(i).toDouble
             quantile
         }
-    }
+    }.orNull
   }
 
   override protected def getSimpleSummaryImpl: Array[SimpleSummary] = {
@@ -194,7 +189,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   private def getMinAndMaxValue(data: DataSet[Array[Object]], columnIndex: Int): (Double, Double) = {
-    val defaultValue = (Double.NaN,Double.NaN)
+    val defaultValue = (Double.NaN, Double.NaN)
     val notNullValues: DataSet[Array[Object]] = data.filter { d => !isNull(d(columnIndex)) }
     val tupleDataset = notNullValues.map {
       d =>

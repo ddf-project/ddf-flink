@@ -3,7 +3,7 @@ package io.ddf.flink
 class FlinkDDFManagerSpec extends BaseSpec {
 
   it should "load data from file" in {
-    ddf.getNamespace should be("FlinkDDF")
+    ddf.getNamespace should be(FlinkConstants.NAMESPACE)
     ddf.getColumnNames should have size (29)
   }
 
@@ -14,7 +14,7 @@ class FlinkDDFManagerSpec extends BaseSpec {
 
   it should "get DDF using SQL2DDF" in {
     loadAirlineDDF()
-    val ddf = flinkDDFManager.sql2ddf("select * from airline", FlinkConstants.ENGINE_NAME_FLINK)
+    val ddf = flinkDDFManager.sql2ddf("select * from airline", FlinkConstants.ENGINE_NAME)
     flinkDDFManager.setDDFName(ddf, "awesome_ddf")
     val ddf1 = flinkDDFManager.getDDFByURI(ddf.getUri)
     assert(ddf1 != null)

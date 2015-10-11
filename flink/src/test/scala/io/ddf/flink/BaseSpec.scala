@@ -21,14 +21,19 @@ class BaseSpec extends FlatSpec with Matchers {
                                  fileName: String,
                                  columns: Seq[String],
                                  delimiter: Char = ',',
-                                 isNullSetToDefault: Boolean = false): DDF = {
+                                 isNullSetToDefault: Boolean = true): DDF = {
     try {
       flinkDDFManager.getDDFByName(ddfName)
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql(s"create table $ddfName (${columns.mkString(",")})", FlinkConstants.ENGINE_NAME_FLINK)
+        flinkDDFManager.sql(s"create table $ddfName (${columns.mkString(",")})", FlinkConstants.ENGINE_NAME)
         val filePath = getClass.getResource(fileName).getPath
-        flinkDDFManager.sql(s"load '$filePath' delimited by '$delimiter' into $ddfName", FlinkConstants.ENGINE_NAME_FLINK)
+        val additionalOptions = if (!isNullSetToDefault) {
+          "WITH NULL '' NO DEFAULTS"
+        } else {
+          s"DELIMITED BY '$delimiter'"
+        }
+        flinkDDFManager.sql(s"load '$filePath' $additionalOptions INTO $ddfName", FlinkConstants.ENGINE_NAME)
         flinkDDFManager.getDDFByName(ddfName)
     }
   }
@@ -55,31 +60,13 @@ class BaseSpec extends FlatSpec with Matchers {
   }
 
   def loadAirlineDDFWithoutDefault(): DDF = {
-    var ddf: DDF = null
-    try {
-      ddf = flinkDDFManager.getDDFByName("airline")
-    } catch {
-      case e: Exception =>
-        flinkDDFManager.sql("create table airline (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME_FLINK)
-        val filePath = getClass.getResource("/airline.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' WITH NULL '' NO DEFAULTS into airline", FlinkConstants.ENGINE_NAME_FLINK)
-        ddf = flinkDDFManager.getDDFByName("airline")
-    }
-    ddf
+    val ddfName = "airline"
+    loadCSVIfNotExists(ddfName, s"/$ddfName.csv", airlineColumns, isNullSetToDefault = false)
   }
 
   def loadAirlineNADDF(): DDF = {
-    var ddf: DDF = null
-    try {
-      ddf = flinkDDFManager.getDDFByName("airlineWithNA")
-    } catch {
-      case e: Exception =>
-        flinkDDFManager.sql("create table airlineWithNA (Year int,Month int,DayofMonth int," + "DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int," + "CRSArrTime int,UniqueCarrier string, FlightNum int, " + "TailNum string, ActualElapsedTime int, CRSElapsedTime int, " + "AirTime int, ArrDelay int, DepDelay int, Origin string, " + "Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int, " + "CancellationCode string, Diverted string, CarrierDelay int, " + "WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME_FLINK)
-        val filePath = getClass.getResource("/airlineWithNA.csv").getPath
-        flinkDDFManager.sql("load '" + filePath + "' WITH NULL '' NO DEFAULTS into airlineWithNA", FlinkConstants.ENGINE_NAME_FLINK)
-        ddf = flinkDDFManager.getDDFByName("airlineWithNA")
-    }
-    ddf
+    val ddfName = "airlineWithNA"
+    loadCSVIfNotExists(ddfName, s"/$ddfName.csv", airlineColumns, isNullSetToDefault = false)
   }
 
 
@@ -107,7 +94,7 @@ class BaseSpec extends FlatSpec with Matchers {
   }
 
   def loadRatingsTrain(): DDF = {
-    loadCSVIfNotExists("user_ratings","/ratings.csv",Seq("user_id int","item_id int","rating double"))
+    loadCSVIfNotExists("user_ratings", "/ratings.csv", Seq("user_id int", "item_id int", "rating double"))
   }
 
   def loadRatingsTest(): DDF = {

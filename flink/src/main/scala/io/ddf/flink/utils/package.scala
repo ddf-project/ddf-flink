@@ -21,7 +21,6 @@ import org.apache.flink.api.table.Row
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.core.fs.Path
 import org.apache.flink.util.{AbstractID, Collector}
-
 import scala.collection.JavaConversions._
 import scala.reflect.ClassTag
 import scala.util.Try
@@ -108,7 +107,11 @@ package object utils {
      *
      * @return A List containing the elements of the DataSet
      */
-    def collectCovariance[T: ClassTag](env: ExecutionEnvironment, dataSet: DataSet[Row], xIndex: Int, yIndex: Int)(implicit typeInformation: TypeInformation[CovarianceCounter]): Double = {
+    def collectCovariance[T: ClassTag](env: ExecutionEnvironment,
+                                       dataSet: DataSet[Row],
+                                       xIndex: Int,
+                                       yIndex: Int)(
+                                        implicit typeInformation: TypeInformation[CovarianceCounter]): Double = {
       val id: String = new AbstractID().toString
       dataSet.flatMap(new CovarianceHelper(id, xIndex, yIndex)).output(new DiscardingOutputFormat)
       val res = env.execute()
@@ -120,7 +123,10 @@ package object utils {
      *
      * @return A List containing the elements of the DataSet
      */
-    def collectHistogram[T: ClassTag](env: ExecutionEnvironment, dataSet: DataSet[Double], bins: Array[java.lang.Double])(implicit typeInformation: TypeInformation[Histogram]): util.TreeMap[Double, Int] = {
+    def collectHistogram[T: ClassTag](env: ExecutionEnvironment,
+                                      dataSet: DataSet[Double],
+                                      bins: Array[java.lang.Double])(
+                                       implicit typeInformation: TypeInformation[Histogram]): util.TreeMap[Double, Int] = {
       val id: String = new AbstractID().toString
       dataSet.flatMap(new HistogramHelper(id, bins)).output(new DiscardingOutputFormat)
       val res = env.execute()
@@ -157,7 +163,8 @@ package object utils {
       val column: Column = schema.getColumn(columnName)
       column.isNumeric match {
         case true =>
-          val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
+          val typeSpecs = RepresentationHandler.DATASET_ARR_OBJ_TYPE_SPECS
+          val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[DataSet[Array[Object]]]
           val colIndex = ddf.getSchema.getColumnIndex(columnName)
           val colData = data.map {
             x =>
@@ -231,9 +238,24 @@ package object utils {
 
   object Joins {
 
-    def joinDataSets(joinType: JoinType, byColumns: util.List[String], byLeftColumns: util.List[String], byRightColumns: util.List[String], leftTable: DataSet[Row], rightTable: DataSet[Row], leftSchema: Schema, rightSchema: Schema): (Seq[Column], DataSet[Row]) = {
-      val joinCols = if (byColumns != null && byColumns.size > 0) collectionAsScalaIterable(byColumns).toArray else collectionAsScalaIterable(byLeftColumns).toArray
-      val toCols = if (byColumns != null && byColumns.size > 0) collectionAsScalaIterable(byColumns).toArray else collectionAsScalaIterable(byRightColumns).toArray
+    def joinDataSets(joinType: JoinType,
+                     byColumns: util.List[String],
+                     byLeftColumns: util.List[String],
+                     byRightColumns: util.List[String],
+                     leftTable: DataSet[Row],
+                     rightTable: DataSet[Row],
+                     leftSchema: Schema,
+                     rightSchema: Schema): (Seq[Column], DataSet[Row]) = {
+      val joinCols = if (byColumns != null && byColumns.size > 0) {
+        collectionAsScalaIterable(byColumns).toArray
+      } else {
+        collectionAsScalaIterable(byLeftColumns).toArray
+      }
+      val toCols = if (byColumns != null && byColumns.size > 0) {
+        collectionAsScalaIterable(byColumns).toArray
+      } else {
+        collectionAsScalaIterable(byRightColumns).toArray
+      }
       val leftCols = leftSchema.getColumns
       val rightCols = rightSchema.getColumns
 
@@ -322,8 +344,17 @@ package object utils {
       row
     }
 
-    def mergeIterator(iter: Iterator[(Row, Row)], joinedColNames: Seq[Schema.Column], leftSchema: Schema, rightSchema: Schema): Iterator[Row] = {
-      if (iter != null) iter.map { case (r1, r2) => merge(r1, r2, joinedColNames, leftSchema, rightSchema) } else List[Row]().iterator
+    def mergeIterator(iter: Iterator[(Row, Row)],
+                      joinedColNames: Seq[Schema.Column],
+                      leftSchema: Schema,
+                      rightSchema: Schema): Iterator[Row] = {
+      if (!Misc.isNull(iter)) {
+        iter.map {
+          case (r1, r2) => merge(r1, r2, joinedColNames, leftSchema, rightSchema)
+        }
+      } else {
+        List[Row]().iterator
+      }
     }
   }
 
@@ -358,7 +389,10 @@ package object utils {
   class SerCsvParserSettings extends CsvParserSettings with Serializable
 
 
-  class StringArrayCsvInputFormat(filePath: Path, delimiter: Char, emptyValue: String, nullValue: String) extends DelimitedInputFormat[Array[String]] {
+  class StringArrayCsvInputFormat(filePath: Path,
+                                  delimiter: Char,
+                                  emptyValue: String,
+                                  nullValue: String) extends DelimitedInputFormat[Array[String]] {
     val charsetName = "UTF-8"
     val isFSV = delimiter == ' ' || delimiter == '\t'
 
@@ -460,7 +494,10 @@ package object utils {
     }
 
 
-    def randomSample(dataSet: DataSet[Array[Object]], withReplacement: Boolean, percent: Double, seed: Int): DataSet[Array[Object]] = {
+    def randomSample(dataSet: DataSet[Array[Object]],
+                     withReplacement: Boolean,
+                     percent: Double,
+                     seed: Int): DataSet[Array[Object]] = {
       val forSeed = new util.Random(seed)
       val randomSeed = forSeed.nextLong()
       val poisson = new PoissonDistribution(percent)

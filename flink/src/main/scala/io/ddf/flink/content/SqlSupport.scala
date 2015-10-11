@@ -13,23 +13,41 @@ object SqlSupport {
 
   case class Create(tableName: String, columns: List[(String, String)]) extends Function
 
-  case class Load(tableName: String, delimiter: Char, url: String, nullValue:String,emptyValue: String, useDefaults: Boolean) extends Function
+  case class Load(tableName: String,
+                  delimiter: Char,
+                  url: String,
+                  nullValue: String,
+                  emptyValue: String,
+                  useDefaults: Boolean) extends Function
 
-  case class Select(project: Projection, relations: Array[Relation], where: Option[Where], group: Option[GroupBy], order: Option[OrderBy], limit: Int) extends Function {
-    override def toString = "Select(" + project + ")From(" + relations.mkString(",") + ")Where(" + where + ")GroupBy(" + group + ")OrderBy(" + order + ")Limit(" + limit + ")"
+  case class Select(project: Projection,
+                    relations: Array[Relation],
+                    where: Option[Where],
+                    group: Option[GroupBy],
+                    order: Option[OrderBy],
+                    limit: Int) extends Function {
 
-    def validate = {
+    override def toString: String =
+      s"Select($project)From(${relations.mkString(",")})Where($where)GroupBy($group)OrderBy($order)Limit($limit)"
 
+    def validate(): Unit = {
       if (!project.isStar) {
         val expressions = project.asInstanceOf[ExprProjection].expressions
         val exprMap = expressions.map(e => (e.name, e)).toMap
-        order.map { o =>
-          o.columns.foreach(os => if (!exprMap.contains(os._1)) throw new IllegalArgumentException("Projection does not contain order by column(" + os._1 + ")"))
+        order.foreach { o =>
+          o.columns.foreach { os =>
+            if (!exprMap.contains(os._1)) {
+              throw new IllegalArgumentException("Projection does not contain order by column(" + os._1 + ")")
+            }
+          }
         }
-        group.map { g =>
-          g.expression.foreach(os => if (!expressions.contains(os)) throw new IllegalArgumentException("Projection does not contain order by column(" + os + ")"))
+        group.foreach { g =>
+          g.expression.foreach { os =>
+            if (!expressions.contains(os)) {
+              throw new IllegalArgumentException("Projection does not contain order by column(" + os + ")")
+            }
+          }
         }
-
       }
     }
   }
@@ -43,27 +61,30 @@ object SqlSupport {
   }
 
   abstract sealed class Projection(starProjection: Boolean) {
-    def isStar = starProjection
+    def isStar: Boolean = starProjection
   }
 
   case class StarProjection() extends Projection(true) {
-    override def toString = "*"
+    override def toString: String = "*"
   }
 
   case class ExprProjection(expressions: Expression*) extends Projection(false) {
-    override def toString = expressions.mkString(",")
+    override def toString: String = expressions.mkString(",")
   }
 
   abstract class Relation(tableName: String) {
-    def getTableName = tableName
+    def getTableName: String = tableName
 
-    override def toString = tableName
+    override def toString: String = tableName
   }
 
   case class SimpleRelation(tableName: String, alias: String) extends Relation(tableName)
 
-  case class JoinRelation(tableName: String, withTableName: String, joinCondition: JoinCondition, joinType: JoinType) extends Relation(tableName) {
-    override def toString = joinType + " join " + tableName + " with " + withTableName + " ON (" + joinCondition + ")"
+  case class JoinRelation(tableName: String,
+                          withTableName: String,
+                          joinCondition: JoinCondition,
+                          joinType: JoinType) extends Relation(tableName) {
+    override def toString: String = s"$joinType join $tableName with $withTableName ON ($joinCondition)"
   }
 
   case class JoinCondition(left: Seq[String], right: Seq[String])
@@ -75,9 +96,9 @@ object SqlSupport {
   case class OrderBy(columns: (String, Boolean)*)
 
   class BinaryExpr(expression: Expression, and: Boolean) {
-    def expr = expression
+    def expr: Expression = expression
 
-    def isAnd = and
+    def isAnd: Boolean = and
   }
 
   case class AndExpr(expression: Expression) extends BinaryExpr(expression, true)
@@ -92,14 +113,21 @@ object SqlSupport {
       ((CREATE ~> TABLE) ~> tableName) ~ columnsWithTypes ^^ { case name ~ contents => Create(name.tableName, contents) }
 
     lazy val load: ExpressionParser.PackratParser[Load] =
-      (LOAD ~> quotedStr) ~ (DELIMITED ~> BY ~> quotedStr).? ~ (WITH ~> NULL ~> quotedStr).? ~ (WITH ~> EMPTY ~> quotedStr).? ~ (NO ~> DEFAULTS).? ~ (INTO ~> tableName) ^^ { case url ~ dl ~ nullVal ~ emptyVal~ noDef ~ name =>
-        Load(name.tableName, dl.getOrElse(",").toCharArray()(0), url,
-          nullValue = nullVal.getOrElse(null),
-          emptyValue = emptyVal.getOrElse(null),
-          noDef.map {
-            case s: String => false
-            case _ => true
-          }.getOrElse(true))
+      (LOAD ~> quotedStr) ~
+        (DELIMITED ~> BY ~> quotedStr).? ~
+        (WITH ~> NULL ~> quotedStr).? ~
+        (WITH ~> EMPTY ~> quotedStr).? ~
+        (NO ~> DEFAULTS).? ~
+        (INTO ~> tableName) ^^ {
+
+        case url ~ dl ~ nullVal ~ emptyVal ~ noDef ~ name =>
+          Load(name.tableName, dl.getOrElse(",").toCharArray()(0), url,
+            nullValue = nullVal.orNull,
+            emptyValue = emptyVal.orNull,
+            noDef.map {
+              case s: String => false
+              case _ => true
+            }.getOrElse(true))
       }
 
     lazy val select: Parser[Select] =
@@ -109,19 +137,13 @@ object SqlSupport {
         (GROUP ~> BY ~> grouping).? ~
         (ORDER ~> BY ~> orderColumns).? ~
         (LIMIT ~> wholeNumber).? ^^ {
+
         case p ~ t ~ w ~ g ~ o ~ l =>
-          val iWhere = w map {
-            case e: Expression => Where(e)
-            case _ => null
-          }
-          val iGroup = g map {
-            case e: List[Expression] => GroupBy(e.toArray: _*)
-            case _ => null
-          }
-          val iOrder = o map {
-            case e: List[(String, Boolean)] => OrderBy(e: _*)
-            case _ => null
-          }
+
+          val iWhere = w.map(expression => Where(expression))
+          val iGroup = g.map(expressions => GroupBy(expressions.toArray: _*))
+          val iOrder = o.map(orderByExpressions => OrderBy(orderByExpressions: _*))
+
           val limit = l.map(s => s.toInt).getOrElse(-1)
 
           Select(p, t.toArray, iWhere, iGroup, iOrder, limit)
@@ -164,7 +186,10 @@ object SqlSupport {
         | FULL ~ OUTER.? ^^^ JoinType.FULL
         )
 
-    protected lazy val tableName: ExpressionParser.PackratParser[SimpleRelation] = ident ~ (AS ~> ident).? ^^ { case t ~ als => SimpleRelation(t, als.getOrElse(t)) }
+    protected lazy val tableName: ExpressionParser.PackratParser[SimpleRelation] =
+      ident ~ (AS ~> ident).? ^^ {
+        case t ~ als => SimpleRelation(t, als.getOrElse(t))
+      }
 
     protected lazy val columnsWithTypes: ExpressionParser.PackratParser[List[(String, String)]] = "(" ~> repsep(columnWithType, ",") <~ ")" ^^ {
       List() ++ _
@@ -180,9 +205,12 @@ object SqlSupport {
         ident ^^ { s => (s, true) }
 
     protected lazy val columnWithType: ExpressionParser.PackratParser[(String, String)] =
-      ident ~ dataType ^^ { case col ~ dt => (col, dt) }
+      ident ~ dataType ^^ {
+        case col ~ dt => (col, dt)
+      }
 
-    protected lazy val dataType: ExpressionParser.PackratParser[String] = VARCHAR | INTEGER | INT | FLOAT | DOUBLE | DATE | TIMESTAMP | BOOLEAN | BOOL | STRING | LONG | BIGINT
+    protected lazy val dataType: ExpressionParser.PackratParser[String] =
+      VARCHAR | INTEGER | INT | FLOAT | DOUBLE | DATE | TIMESTAMP | BOOLEAN | BOOL | STRING | LONG | BIGINT
 
     protected lazy val quotedStr =
       ("'" + """([^'\p{Cntrl}\\]|\\[\\'"bfnrt]|\\u[a-fA-F0-9]{4})*""" + "'").r ^^ {
@@ -225,10 +253,10 @@ object SqlSupport {
         | (SUBSTR | SUBSTRING) ~ "(" ~> expression ~ ("," ~> expression) <~ ")" ^^ { case s ~ p => Substring(s, p, Literal(Integer.MAX_VALUE)) }
         | (SUBSTR | SUBSTRING) ~ "(" ~> expression ~ ("," ~> expression) ~ ("," ~> expression) <~ ")" ^^ { case s ~ p ~ l => Substring(s, p, l) }
         | ABS ~ "(" ~> expression <~ ")" ^^ { case exp => Abs(exp) }
-        | CAST ~ "(" ~> expression ~ AS ~ typeInformation <~ ")" ^^ { case exp~ a ~ t => Cast(exp,t) }
+        | CAST ~ "(" ~> expression ~ AS ~ typeInformation <~ ")" ^^ { case exp ~ a ~ t => Cast(exp, t) }
         )
 
-    protected lazy val typeInformation:Parser[TypeInformation[_]] =
+    protected lazy val typeInformation: Parser[TypeInformation[_]] =
       (
         VARCHAR ^^ { case s => BasicTypeInfo.STRING_TYPE_INFO }
           | INTEGER ^^ { case s => BasicTypeInfo.INT_TYPE_INFO }
@@ -327,7 +355,7 @@ object SqlSupport {
 
     override def apply(in: Input): ParseResult[Function] = createOrLoadOrSelect(new PackratReader[ExpressionParser.Elem](in))
 
-    def parse(input: String) = parseAll(createOrLoadOrSelect, input) match {
+    def parse(input: String):SqlSupport.Function = parseAll(createOrLoadOrSelect, input) match {
       case s: Success[Function] => s.get
       case e: Error =>
         val msg = "Cannot parse [" + input + "] because " + e.msg
@@ -342,20 +370,28 @@ object SqlSupport {
   case class Keyword(str: scala.Predef.String) extends scala.AnyRef with scala.Product with scala.Serializable
 
   def expr(e: Expression, l: List[BinaryExpr]): Expression = {
-    val expression: Expression =
-      if (l.nonEmpty) {
-        var booleanExpr: Expression = if (l.head.isAnd) new And(e, l.head.expr) else new Or(e, l.head.expr)
-        l.tail.foreach {
-          case o: OrExpr => booleanExpr = new Or(booleanExpr, o.expr)
-          case a: BinaryExpr => booleanExpr = new And(booleanExpr, a.expr)
-        }
-        booleanExpr
-      } else e
+    var expression: Expression = e
+    if (l.nonEmpty) {
+      var booleanExpr: Expression = if (l.head.isAnd) {
+        new And(e, l.head.expr)
+      } else {
+        new Or(e, l.head.expr)
+      }
+      l.tail.foreach {
+        case o: OrExpr => booleanExpr = new Or(booleanExpr, o.expr)
+        case a: BinaryExpr => booleanExpr = new And(booleanExpr, a.expr)
+      }
+      expression = booleanExpr
+    }
     expression
   }
 
 }
 
+// scalastyle:off
+/**
+ * Tests for the Parser
+ */
 object SqlSupportTest {
 
   val parser = new TableDdlParser
@@ -397,3 +433,5 @@ object SqlSupportTest {
   }
 
 }
+
+// scalastyle:on

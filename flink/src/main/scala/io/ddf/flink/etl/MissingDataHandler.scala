@@ -4,6 +4,7 @@ import java.security.SecureRandom
 import java.text.SimpleDateFormat
 import java.util
 
+import io.ddf.flink.FlinkConstants
 import io.ddf.{DDFManager, DDF}
 import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
@@ -24,12 +25,11 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
   val rowDataSet = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Row]).asInstanceOf[DataSet[Row]]
 
   private def generateDDF[T](data: T, typeSpecs: Array[Class[_]], schemaColumns: List[Column]): DDF = {
-    val namespace: String = "FlinkDDF"
     val rand: SecureRandom = new SecureRandom
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
     val schema: Schema = new Schema(tableName, schemaColumns)
     val manager: DDFManager = ddf.getManager
-    manager.newDDF(data, typeSpecs, manager.getEngineName, namespace, tableName, schema)
+    manager.newDDF(data, typeSpecs, manager.getEngineName, FlinkConstants.NAMESPACE, tableName, schema)
   }
 
   private def dropColumnsWithNA(columnNames: List[String], columnNamesString: String, threshold: Long): DDF = {
@@ -144,7 +144,7 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     val schemaColumns = dataColumns.zipWithIndex.map {
       case ((col, oldIndex), currentIndex) =>
         val columnName: String = col.getName
-        println(s"$value -- $columnsToValues -- $aggregateFunction")
+        mLog.info(s"$value -- $columnsToValues -- $aggregateFunction")
         val defaultValue = if (!isNull(value)) {
           value
         } else if (!isNull(columnsToValues) && columnsToValues.containsKey(columnName)) {

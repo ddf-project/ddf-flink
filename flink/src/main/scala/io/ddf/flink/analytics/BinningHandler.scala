@@ -10,6 +10,7 @@ import io.ddf.analytics.{AStatisticsSupporter, ABinningHandler, IHandleBinning}
 import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.utils.Misc
+import io.ddf.flink.utils.Misc.isNull
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
@@ -157,7 +158,7 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning 
   }
 
   override def getVectorHistogram(column: String, numBins: Int): util.List[HistogramBin] = {
-    val columnData = Misc.getDoubleColumn(ddf,column).get
+    val columnData = Misc.getDoubleColumn(ddf, column).get
     val manager = this.getManager.asInstanceOf[FlinkDDFManager]
 
     val max = columnData.reduce(_ max _).collect().head
