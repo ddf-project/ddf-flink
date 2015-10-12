@@ -20,13 +20,13 @@ For Big Data Scientists & Engineers
 
 ### Getting Started
 
-This project depends on DDF v1.2.0 and requires its installation to run. To get DDF version 1.2.0, clone DDF repo and checkout the v1.2.0 tag.
+This project depends on DDF v1.4.0-SNAPSHOT and requires its installation to run. To get DDF version 1.4.0-SNAPSHOT, clone DDF repo and checkout the tuplejump-integration branch.
 
 ```
 $ git clone git@github.com:ddf-project/DDF.git
 $ cd DDF
 $ git fetch
-$ git checkout -v1.2.0
+$ git checkout tuplejump-integration
 ```
 
 No changes are required when installing DDF using maven.
