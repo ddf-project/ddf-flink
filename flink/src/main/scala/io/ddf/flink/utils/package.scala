@@ -183,46 +183,40 @@ package object utils {
       val colIndex = schema.getColumnIndex(col)
       val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
 
-
-      def getInterval(value: Double, b: Array[Double]): String = {
-        var interval: String = null
-        //case lowest
-        if (value >= b(0) && value <= b(1)) {
-          if (right) {
-            if (includeLowest) if (value >= b(0) && value <= b(1)) interval = intervals(0)
-            else
-            if (value > b(0) && value <= b(1)) interval = intervals(0)
-          }
-          else {
-            if (value >= b(0) && value < b(1)) interval = intervals(0)
-          }
-        } else if (b(b.length - 2) >= value && value <= b(b.length - 1)) {
-          //case highest
-          if (right) {
-            if (value > b(b.length - 2) && value <= b(b.length - 1)) interval = intervals(intervals.length - 1)
-          }
-          else {
-            if (includeLowest) if (value >= b(b.length - 2) && value <= b(b.length - 1)) interval = intervals(intervals.length - 1)
-            else
-            if (value >= b(b.length - 2) && value < b(b.length - 1)) interval = intervals(intervals.length - 1)
-          }
+      def getIntervalForValue(value: Double, b: Array[Double]): String = {
+        val maxValueIndex = if (right) {
+          b.indexWhere(x => value <= x)
         } else {
-          //case intermediate breaks
-          (1 to b.length - 3).foreach { i =>
-            if (right)
-              if (value > b(i) && value <= b(i + 1)) interval = intervals(i)
-              else
-              if (value >= b(i) && value < b(i + 1)) interval = intervals(i)
-          }
+          b.indexWhere(x => value < x)
         }
-        interval
+        val position: Int = maxValueIndex match {
+          case 0 | 1 => 0
+          case x if (x % 2 == 0) => maxValueIndex / 2
+          case _ => (maxValueIndex / 2) + 1
+        }
+        intervals(position)
       }
 
-      val binned = data.map { row =>
+      val binned = data.filter {
+        row =>
+          val elem = row(colIndex)
+          if (!isNull(elem)) {
+            val value = elem.toString.trim.toDouble
+            val isOutOfRange = (value < b.head) || (value > b.last)
+            val isLowerBound = (value == b.head)
+            val isUpperBound = (value == b.last)
+            val isIntermediateBound = b.slice(1, b.length - 1).contains(value)
+            val exclude = isOutOfRange || (!includeLowest && isLowerBound) || (!right && isUpperBound) ||
+              (!includeLowest && !right && isIntermediateBound)
+            !exclude
+          } else {
+            false
+          }
+      }.map { row =>
         val elem = row(colIndex)
         val mayBeDouble = Try(elem.toString.trim.toDouble)
         val value = mayBeDouble.getOrElse(0.0)
-        row(colIndex) = getInterval(value, b)
+        row(colIndex) = getIntervalForValue(value, b)
         row
       }
 
@@ -230,9 +224,9 @@ package object utils {
       cols.set(colIndex, new Column(column.getName, ColumnType.STRING))
       val newTableName = ddf.getSchemaHandler.newTableName()
       val newSchema = new Schema(newTableName, cols)
-      val manager: DDFManager = ddf.getManager()
+      val manager: DDFManager = ddf.getManager
       val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
-      manager.newDDF(binned, typeSpecs, manager.getEngineName, null, newTableName, newSchema)
+      manager.newDDF(binned, typeSpecs, manager.getEngineName, manager.getNamespace, newTableName, newSchema)
     }
   }
 

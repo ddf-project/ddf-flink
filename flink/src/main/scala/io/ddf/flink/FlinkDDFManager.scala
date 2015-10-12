@@ -23,6 +23,8 @@ class FlinkDDFManager extends DDFManager {
 
   override def getEngine: String = ENGINE_NAME
 
+  override def getNamespace: String = NAMESPACE
+
   override def loadTable(fileURL: String, fieldSeparator: String): DDF = {
     val fileData: DataSet[Array[Object]] = flinkExecutionEnvironment
       .readTextFile(fileURL)
@@ -42,7 +44,7 @@ class FlinkDDFManager extends DDFManager {
     val schema: Schema = new Schema(tableName, columns)
     val rowDS = RepresentationHandler.getRowDataSet(fileData, columns.toList, useDefaults = false)
 
-    val ddf = this.newDDF(rowDS, typeSpecs, getEngine, FlinkConstants.NAMESPACE, tableName, schema)
+    val ddf = this.newDDF(rowDS, typeSpecs, getEngine, getNamespace, tableName, schema)
     this.addDDF(ddf)
     ddf
   }

@@ -31,23 +31,32 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning 
 
     binningType match {
       case BinningType.CUSTOM =>
-        if (breaks == null) throw new DDFException("Please enter valid break points")
-        if (breaks.sorted.deep != breaks.deep) throw new DDFException("Please enter increasing breaks")
+        if (isNull(breaks)) {
+          throw new DDFException("Please enter valid break points")
+        }
+        if (breaks.sorted.deep != breaks.deep) {
+          throw new DDFException("Please enter increasing breaks")
+        }
       case BinningType.EQUAlFREQ => breaks = {
-        if (numBins < 2) throw new DDFException("Number of bins cannot be smaller than 2")
+        if (numBins < 2) {
+          throw new DDFException("Number of bins cannot be smaller than 2")
+        }
         getQuantilesFromNumBins(colMeta.getName, numBins)
       }
       case BinningType.EQUALINTERVAL => breaks = {
-        if (numBins < 2) throw new DDFException("Number of bins cannot be smaller than 2")
+        if (numBins < 2) {
+          throw new DDFException("Number of bins cannot be smaller than 2")
+        }
         getIntervalsFromNumBins(colMeta.getName, numBins).map(_.doubleValue())
       }
       case _ => throw new DDFException(String.format("Binning type %s is not supported", binningTypeString))
     }
     var intervals = createIntervals(breaks, includeLowest, right)
 
-    val newDDF = Misc.getBinned(ddf, breaks, column, intervals, includeLowest, right)
+    breaks = breaks.sorted
     //remove single quote in intervals
     intervals = intervals.map(x => x.replace("'", ""))
+    val newDDF = Misc.getBinned(ddf, breaks, column, intervals, includeLowest, right)
     newDDF.getSchemaHandler.setAsFactor(column).setLevels(intervals.toList.asJava)
     newDDF
   }
@@ -55,19 +64,28 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning 
   def createIntervals(breaks: Array[Double], includeLowest: Boolean, right: Boolean): Array[String] = {
     val decimalPlaces: Int = 2
     val formatter = new DecimalFormat("#." + Iterator.fill(decimalPlaces)("#").mkString(""))
-    var intervals: Array[String] = null
-    intervals = (0 to breaks.length - 2).map {
+    val intervals: Array[String] = (0 to breaks.length - 2).map {
       i =>
-        if (right)
+        if (includeLowest && i == 0) {
+          if (right) {
+            "'[%s,%s]'".format(formatter.format(breaks(i)), formatter.format(breaks(i + 1)))
+          } else {
+            "'[%s,%s)'".format(formatter.format(breaks(i)), formatter.format(breaks(i + 1)))
+          }
+        } else if (right) {
           "'(%s,%s]'".format(formatter.format(breaks(i)), formatter.format(breaks(i + 1)))
-        else
-          "'[%s,%s)'".format(formatter.format(breaks(i)), formatter.format(breaks(i + 1)))
+        } else {
+          "'(%s,%s)'".format(formatter.format(breaks(i)), formatter.format(breaks(i + 1)))
+        }
     }.toArray
+
     if (includeLowest) {
-      if (right)
+      if (right) {
         intervals(0) = "'[%s,%s]'".format(formatter.format(breaks(0)), formatter.format(breaks(1)))
-      else
-        intervals(intervals.length - 1) = "'[%s,%s]'".format(formatter.format(breaks(breaks.length - 2)), formatter.format(breaks(breaks.length - 1)))
+      } else {
+        intervals(intervals.length - 1) =
+          "'[%s,%s)'".format(formatter.format(breaks(breaks.length - 2)), formatter.format(breaks(breaks.length - 1)))
+      }
     }
     mLog.info("interval labels = {}", intervals)
     intervals
@@ -119,40 +137,46 @@ class BinningHandler(ddf: DDF) extends ABinningHandler(ddf) with IHandleBinning 
    * and method findInterval(Double) return an interval for a given Double
    */
 
-  class Intervals(val stopping: List[Double], private val includeLowest: Boolean = false, right: Boolean = true,
+  class Intervals(val stopping: List[Double],
+                  private val includeLowest: Boolean = false,
+                  right: Boolean = true,
                   formatter: DecimalFormat) extends Serializable {
     val intervals = createIntervals(Array[(Double => Boolean, String)](), stopping, first = true)
-
+    // scalastyle:off cyclomatic.complexity
     @tailrec
-    private def createIntervals(result: Array[(Double => Boolean, String)], stopping: List[Double], first: Boolean): Array[(Double => Boolean, String)] = stopping match {
+    private def createIntervals(result: Array[(Double => Boolean, String)],
+                                stopping: List[Double],
+                                first: Boolean = false): Array[(Double => Boolean, String)] = stopping match {
       case Nil => result
       case x :: Nil => result
       case x :: y :: xs =>
-        if (includeLowest && right)
-          if (first)
-            createIntervals(result :+((z: Double) => z >= x && z <= y, "[" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
-          else
-            createIntervals(result :+((z: Double) => z > x && z <= y, "(" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
-
-        else if (includeLowest && !right)
-          if (xs == Nil)
-            createIntervals(result :+((z: Double) => z >= x && z <= y, "[" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
-          else
-            createIntervals(result :+((z: Double) => z >= x && z < y, "[" + formatter.format(x) + "," + formatter.format(y) + ")"), y :: xs, first = false)
-
-        else if (!includeLowest && right)
-          createIntervals(result :+((z: Double) => z > x && z <= y, "(" + formatter.format(x) + "," + formatter.format(y) + "]"), y :: xs, first = false)
-
-        else
-          createIntervals(result :+((z: Double) => z >= x && z < y, "[" + formatter.format(x) + "," + formatter.format(y) + ")"), y :: xs, first = false)
+        val bound: String = s"${formatter.format(x)},${formatter.format(y)}"
+        if (includeLowest && right) {
+          if (first) {
+            createIntervals(result :+((z: Double) => z >= x && z <= y, s"[$bound]"), y :: xs)
+          } else {
+            createIntervals(result :+((z: Double) => z > x && z <= y, s"($bound]"), y :: xs)
+          }
+        } else if (includeLowest && !right) {
+          if (xs == Nil) {
+            createIntervals(result :+((z: Double) => z >= x && z <= y, s"[$bound]"), y :: xs)
+          } else {
+            createIntervals(result :+((z: Double) => z >= x && z < y, s"[$bound)"), y :: xs)
+          }
+        } else if (!includeLowest && right) {
+          createIntervals(result :+((z: Double) => z > x && z <= y, s"($bound]"), y :: xs)
+        } else {
+          createIntervals(result :+((z: Double) => z >= x && z < y, s"[$bound)"), y :: xs)
+        }
     }
+    // scalastyle:on cyclomatic.complexity
 
     def findInterval(aNum: Double): Option[String] = {
       intervals.find {
         case (f, y) => f(aNum)
       } match {
         case Some((x, y)) => Option(y)
-        case None => Option(null)
+        case None => None
       }
     }
   }
