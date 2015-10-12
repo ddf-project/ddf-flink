@@ -10,8 +10,9 @@ import io.ddf.{DDF, Factor}
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.api.scala._
 
+import io.ddf.flink.utils.Misc.isNull
 
-class SchemaHandler(ddf:DDF) extends io.ddf.content.SchemaHandler(ddf){
+class SchemaHandler(ddf: DDF) extends io.ddf.content.SchemaHandler(ddf) {
 
   @throws(classOf[DDFException])
   override def computeFactorLevelsAndLevelCounts {
@@ -21,8 +22,8 @@ class SchemaHandler(ddf:DDF) extends io.ddf.content.SchemaHandler(ddf){
     for (col <- this.getColumns) {
       if (col.getColumnClass eq Schema.ColumnClass.FACTOR) {
         var colFactor: Factor[_] = col.getOptionalFactor
-        if (colFactor == null || colFactor.getLevelCounts == null || colFactor.getLevels == null) {
-          if (colFactor == null) {
+        if (isNull(colFactor) || isNull(colFactor.getLevelCounts) || isNull(colFactor.getLevels)) {
+          if (isNull(colFactor)) {
             colFactor = this.setAsFactor(col.getName)
           }
           columnIndexes.add(this.getColumnIndex(col.getName))
@@ -33,25 +34,26 @@ class SchemaHandler(ddf:DDF) extends io.ddf.content.SchemaHandler(ddf){
     var listLevelCounts: Map[Integer, Map[String, Integer]] = null
     if (columnIndexes.size > 0) {
       try {
-          val dataSet:DataSet[Array[Object]] = this.ddf.getRepresentationHandler.get(RepresentationHandler.DATASET_ARR_OBJECT.getTypeSpecsString).asInstanceOf[DataSet[Array[Object]]]
-          if (dataSet == null) {
-            throw new DDFException("DataSet is null")
-          }
-          listLevelCounts = GetMultiFactor.getFactorCounts(dataSet, columnIndexes, columnTypes, classOf[Array[AnyRef]])
+        val typeSpecs: String = RepresentationHandler.DATASET_ARR_OBJECT.getTypeSpecsString
+        val dataSet: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(typeSpecs).asInstanceOf[DataSet[Array[Object]]]
+        if (isNull(dataSet)) {
+          throw new DDFException("DataSet is null")
+        }
+        listLevelCounts = GetMultiFactor.getFactorCounts(dataSet, columnIndexes, columnTypes, classOf[Array[AnyRef]])
       }
       catch {
         case e: DDFException => {
           throw new DDFException("Error getting factor level counts", e)
         }
       }
-      if (listLevelCounts == null) {
+      if (isNull(listLevelCounts)) {
         throw new DDFException("Error getting factor levels counts")
       }
       import scala.collection.JavaConversions._
       for (colIndex <- columnIndexes) {
         val column: Schema.Column = this.getColumn(this.getColumnName(colIndex))
         val levelCounts: Map[String, Integer] = listLevelCounts.get(colIndex)
-        if (levelCounts != null) {
+        if (!isNull(levelCounts)) {
           val factor: Factor[_] = column.getOptionalFactor
           val levels: List[String] = new util.ArrayList[String](levelCounts.keySet)
           factor.setLevelCounts(levelCounts)
@@ -94,13 +96,16 @@ object GetMultiFactor {
     getFactorCounts(rdd, columnIndexes, columnTypes)(ClassTag(rddUnit))
   }
 
-  def getFactorCounts[T](rdd: DataSet[T], columnIndexes: JList[JInt], columnTypes: JList[ColumnType])(implicit tag: ClassTag[T]): JMap[JInt, JMap[String, JInt]] = {
+  def getFactorCounts[T](rdd: DataSet[T],
+                         columnIndexes: JList[JInt],
+                         columnTypes: JList[ColumnType])(
+                          implicit tag: ClassTag[T]): JMap[JInt, JMap[String, JInt]] = {
     val columnIndexesWithTypes = (columnIndexes zip columnTypes).toList
 
     tag.runtimeClass match {
       case arrObj if arrObj == classOf[Array[Object]] =>
         val mapper = new ArrayObjectMultiFactorMapper(columnIndexesWithTypes)
-        val rddArrObj:DataSet[Array[Object]] = rdd.asInstanceOf[DataSet[Array[Object]]]
+        val rddArrObj: DataSet[Array[Object]] = rdd.asInstanceOf[DataSet[Array[Object]]]
         rddArrObj.mapPartition(mapper).reduce(new MultiFactorReducer).collect().head
       case _ =>
         throw new DDFException("Cannot get multi factor for RDD[%s]".format(tag.toString))
@@ -139,7 +144,7 @@ object GetMultiFactor {
               Option(aMap.get(idx)) match {
                 case Some(map) => {
                   val num = map.get(string)
-                  map.put(string, if (num == null) 1 else num + 1)
+                  map.put(string, if (isNull(num)) 1 else num + 1)
                 }
                 case None => {
                   val newMap = new JHMap[String, JInt]()
@@ -157,7 +162,6 @@ object GetMultiFactor {
   }
 
 
-
   class MultiFactorReducer
     extends Function2[JMap[JInt, JMap[String, JInt]], JMap[JInt, JMap[String, JInt]], JMap[JInt, JMap[String, JInt]]]
     with Serializable {
@@ -169,7 +173,7 @@ object GetMultiFactor {
           case Some(smap2) =>
             for ((string, num) <- smap1) {
               val aNum = smap2.get(string)
-              smap2.put(string, if (aNum == null) num else (aNum + num))
+              smap2.put(string, if (isNull(aNum)) num else (aNum + num))
             }
           case None => map2.put(idx, smap1)
         }
