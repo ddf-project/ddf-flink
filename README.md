@@ -92,3 +92,9 @@ $ bin/run-flink-example io.ddf.flink.examples.FlinkDDFExample
 ```
 
 SBT package is required since it generates the `lib_managed` which is required for running the scripts.
+
+####Todo
+
+1. Test the ML method `getConfusionMatrix`
+2. Implement `transformPython` and `flattenDDF` for TransformationHandler and also test the R functions.
+3. Implement the methods `r2score`, `residuals`, `roc` and `rmse` for MLMetricsSupporter
