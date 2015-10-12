@@ -3,12 +3,13 @@ package io.ddf.flink.analytics
 import java.lang.Iterable
 import java.{lang, util}
 
-import com.clearspring.analytics.stream.quantile.QDigest
+import com.clearspring.analytics.stream.quantile.{QDigest, TDigest}
 import io.ddf.DDF
 import io.ddf.analytics.AStatisticsSupporter.FiveNumSummary
 import io.ddf.analytics._
 import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
+import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.utils.Misc
 import io.ddf.flink.utils.Misc._
@@ -136,8 +137,31 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     Misc.collectCovariance(manager.getExecutionEnvironment, dataSet, xIndex, yIndex)
   }
 
-  override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = {
-    //TODO check for a better way - this implementation involves conversion from double to long and then long to double
+  private def getTDigest(columnName: String, percentiles: Array[lang.Double]): TDigest = {
+    val maybeDataSet: Option[DataSet[Double]] = getDoubleColumn(columnName)
+
+    maybeDataSet.map {
+      ds =>
+        val digests = ds.map {
+          x =>
+            val rs = new TDigest(100)
+            rs.add(x)
+            rs
+        }.reduce {
+          (x, y) => x.add(y)
+            x
+        }
+        val reducedList: util.List[TDigest] = digests.collect()
+        val finalDigest = reducedList.reduce {
+          (x, y) =>
+            x.add(y)
+            x
+        }
+        finalDigest
+    }.orNull
+  }
+
+  private def getQDigest(columnName: String): QDigest = {
     val maybeDataSet: Option[DataSet[Double]] = getDoubleColumn(columnName)
     maybeDataSet.map {
       ds =>
@@ -150,12 +174,29 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
         val finalDigest = reducedList.reduce {
           (x, y) => QDigest.unionOf(x, y)
         }
-        percentiles.map {
-          i =>
-            val quantile: lang.Double = finalDigest.getQuantile(i).toDouble
-            quantile
-        }
+        finalDigest
     }.orNull
+  }
+
+
+  override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = {
+    val column = ddf.getColumn(columnName)
+    if (ColumnType.isIntegral(column.getType)) {
+      val qDigest = getQDigest(columnName)
+      percentiles.map { p =>
+        val quantile: lang.Double = qDigest.getQuantile(p).toDouble
+        quantile
+      }
+    } else if (ColumnType.isFractional(column.getType)) {
+      val tDigest = getTDigest(columnName, percentiles)
+      percentiles.map {
+        p =>
+          val quantile: lang.Double = tDigest.quantile(p)
+          quantile
+      }
+    } else {
+      throw new DDFException(new UnsupportedOperationException("Quantiles can only be calculated for numeric columns"))
+    }
   }
 
   override protected def getSimpleSummaryImpl: Array[SimpleSummary] = {

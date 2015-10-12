@@ -49,7 +49,7 @@ lazy val flink = project.in(file("flink")).settings(commonSettings: _*).settings
     "com.univocity" % "univocity-parsers" % "1.5.5",
     "org.apache.flink" % "flink-ml" % flinkVersion excludeAll (excludeBreeze),
     "org.scalanlp" %% "breeze" % "0.11.2",
-    "com.clearspring.analytics" % "stream" % "2.4.0" exclude("asm", "asm"),
+    "com.clearspring.analytics" % "stream" % "2.7.0" exclude("asm", "asm"),
     "asm" % "asm" % "3.2",
     "org.scalatest" % "scalatest_2.10" % "2.2.2" % "test"
   ) ++ com_adatao_unmanaged

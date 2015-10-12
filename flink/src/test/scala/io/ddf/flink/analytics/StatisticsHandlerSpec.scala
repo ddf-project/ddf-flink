@@ -4,6 +4,7 @@ import java.util
 
 import io.ddf.analytics.{NumericSimpleSummary, CategoricalSimpleSummary, AStatisticsSupporter}
 import io.ddf.flink.BaseSpec
+import org.scalactic.TolerantNumerics
 
 class StatisticsHandlerSpec extends BaseSpec {
 
@@ -43,6 +44,17 @@ class StatisticsHandlerSpec extends BaseSpec {
     val expectedQuantiles: Array[java.lang.Double] = Array(801.0, 1416.0, 1644.0)
     val quantiles: Array[java.lang.Double] = ddf.getVectorQuantiles("V5", pArray)
     quantiles should equal(expectedQuantiles)
+  }
+
+  it should "calculate vector quantiles for double column" in {
+    val carsDDF = loadMtCarsDDF()
+    val pArray: Array[java.lang.Double] = Array(0.0, 0.3, 0.5, 0.3, 1.0)
+    val expectedQuantiles: Array[java.lang.Double] = Array(10.4, 15.68, 18.95, 15.68, 33.9)
+    implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(0.01)
+    val quantiles: Array[java.lang.Double] = carsDDF.getVectorQuantiles("mpg", pArray)
+    for (i <- pArray.indices) {
+      quantiles(i) === expectedQuantiles(i)
+    }
   }
 
   it should "calculate vector histogram" in {
@@ -90,5 +102,4 @@ class StatisticsHandlerSpec extends BaseSpec {
         num.getMin should be(-4.0)
     }
   }
-
 }
