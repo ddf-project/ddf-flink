@@ -4,7 +4,7 @@ import java.{lang, util}
 
 import io.ddf.DDF
 import io.ddf.facades.MLFacade
-import io.ddf.ml.{IModel, ISupportML}
+import io.ddf.ml.{CrossValidationSet, IModel, ISupportML}
 import org.apache.flink.ml.common.ParameterMap
 
 class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlSupporter) {
@@ -27,12 +27,14 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
     mlSupporter.applyModel(model, hasLabels, includeFeatures)
   }
 
-  override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util.List[util.List[DDF]] = {
-    this.getMLSupporter.CVRandom(k, trainingSize, seed)
+  override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util.List[CrossValidationSet] = {
+    // this.getMLSupporter.CVRandom(k, trainingSize, seed)
+    null
   }
 
-  override def CVKFold(k: Int, seed: lang.Long): util.List[util.List[DDF]] = {
-    this.getMLSupporter.CVKFold(k, seed)
+  override def CVKFold(k: Int, seed: lang.Long): util.List[CrossValidationSet] = {
+    //this.getMLSupporter.CVKFold(k, seed)
+    null
   }
 
   override def getConfusionMatrix(model: IModel, threshold: Double): Array[Array[Long]] = {

@@ -8,7 +8,7 @@ import io.ddf.content.Schema.Column
 import io.ddf.flink.FlinkDDF
 import io.ddf.flink.analytics.CrossValidation
 import io.ddf.misc.{Config, ADDFFunctionalGroupHandler}
-import io.ddf.ml.{IModel, ISupportML, MLSupporter => CoreMLSupporter, Model}
+import io.ddf.ml.{MLSupporter => CoreMLSupporter, CrossValidationSet, IModel, ISupportML, Model}
 import org.apache.flink.api.common.functions.{ReduceFunction, MapFunction}
 import org.apache.flink.api.scala.DataSet
 import org.apache.flink.ml.common.ParameterMap
@@ -55,11 +55,13 @@ class FlinkMLSupporter(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IS
     this.getManager.newDDF(this.getManager, resultDs, (classOf[DataSet[_]] +: resultType).toArray, this.getManager.getNamespace, null, schema)
   }
 
-  override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util.List[util.List[DDF]] = {
+  override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util
+  .List[CrossValidationSet] = {
     CrossValidation.DDFRandomSplit(this.getDDF, k, trainingSize, seed)
   }
 
-  override def CVKFold(k: Int, seed: lang.Long): util.List[util.List[DDF]] = {
+  override def CVKFold(k: Int, seed: lang.Long): util.List[CrossValidationSet]
+  = {
     CrossValidation.DDFKFoldSplit(this.getDDF, k, seed)
   }
 

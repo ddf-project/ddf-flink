@@ -6,7 +6,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import scala.collection.JavaConverters._
 
 class BaseSpec extends FlatSpec with Matchers {
-  val flinkDDFManager = DDFManager.get("flink").asInstanceOf[FlinkDDFManager]
+  val flinkDDFManager = DDFManager.get("").asInstanceOf[FlinkDDFManager]
   var lDdf: DDF = null
 
   def ddf = loadDDF()

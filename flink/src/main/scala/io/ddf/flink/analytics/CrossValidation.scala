@@ -6,6 +6,7 @@ import java.util.{List => JList, Random}
 import io.ddf.content.Schema
 import io.ddf.exception.DDFException
 import io.ddf.flink.utils.Misc.isNull
+import io.ddf.ml.CrossValidationSet
 import io.ddf.{DDF, DDFManager}
 import org.apache.flink.api.common.functions.RichFilterFunction
 import org.apache.flink.api.scala.DataSet
@@ -66,7 +67,7 @@ object CrossValidation {
   def DDFRandomSplit(ddf: DDF,
                      numSplits: Int,
                      trainingSize: Double,
-                     seed: Long): JList[JList[DDF]] = {
+                     seed: Long): JList[CrossValidationSet] = {
     var unitType: Class[_] = null
     var splits: Iterator[(DataSet[_], DataSet[_])] = null
     if (ddf.getRepresentationHandler.has(classOf[DataSet[_]], classOf[Row])) {
@@ -96,7 +97,7 @@ object CrossValidation {
     getDDFCVSetsFromDataSets(splits, ddf.getManager, ddf.getSchema, ddf.getNamespace, unitType)
   }
 
-  def DDFKFoldSplit(ddf: DDF, numSplits: Int, seed: Long): JList[JList[DDF]] = {
+  def DDFKFoldSplit(ddf: DDF, numSplits: Int, seed: Long): JList[CrossValidationSet] = {
     var unitType: Class[_] = null
     var splits: Iterator[(DataSet[_], DataSet[_])] = null
 
@@ -138,11 +139,13 @@ object CrossValidation {
                                        manager: DDFManager,
                                        schema: Schema,
                                        nameSpace: String,
-                                       unitType: Class[_]): JList[JList[DDF]] = {
-    val cvSets: JList[JList[DDF]] = new util.ArrayList[JList[DDF]]()
+                                       unitType: Class[_]):
+  JList[CrossValidationSet] = {
+    // val cvSets: JList[JList[DDF]] = new util.ArrayList[JList[DDF]]()
+    val cvSets: JList[CrossValidationSet] = new util.ArrayList[CrossValidationSet]()
 
     for ((train, test) <- splits) {
-      val aSet = new util.ArrayList[DDF]()
+      // val aSet = new util.ArrayList[DDF]()
 
       val trainSchema = new Schema(null, schema.getColumns)
 
@@ -152,9 +155,7 @@ object CrossValidation {
       val testSchema = new Schema(null, schema.getColumns)
       val testDDF = manager.newDDF(manager, test, typeSpecs, nameSpace, null, testSchema)
 
-      aSet.add(trainDDF)
-      aSet.add(testDDF)
-      cvSets.add(aSet)
+      cvSets.add(new CrossValidationSet(trainDDF, testDDF))
     }
     cvSets
   }
