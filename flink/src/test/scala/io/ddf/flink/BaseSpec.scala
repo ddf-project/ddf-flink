@@ -1,12 +1,14 @@
 package io.ddf.flink
 
+import io.ddf.DDFManager.EngineType
 import io.ddf.{DDF, DDFManager}
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.collection.JavaConverters._
 
 class BaseSpec extends FlatSpec with Matchers {
-  val flinkDDFManager = DDFManager.get("").asInstanceOf[FlinkDDFManager]
+  val flinkDDFManager = DDFManager.get(EngineType.FLINK)
+    .asInstanceOf[FlinkDDFManager]
   var lDdf: DDF = null
 
   def ddf = loadDDF()

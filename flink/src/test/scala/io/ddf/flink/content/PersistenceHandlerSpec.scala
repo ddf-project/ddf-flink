@@ -2,6 +2,7 @@ package io.ddf.flink.content
 
 import java.io.File
 
+import io.ddf.DDFManager.EngineType
 import io.ddf.content.APersistenceHandler.PersistenceUri
 import io.ddf.flink.FlinkConstants
 import io.ddf.misc.Config.ConfigConstant
@@ -13,7 +14,7 @@ class PersistenceHandlerSpec extends FlatSpec with Matchers {
 
 
   it should "hold namespaces correctly" in {
-    val manager: DDFManager = DDFManager.get("flink")
+    val manager: DDFManager = DDFManager.get(EngineType.FLINK)
     val ddf: DDF = manager.newDDF
 
     val namespaces = ddf.getPersistenceHandler.listNamespaces
@@ -27,7 +28,7 @@ class PersistenceHandlerSpec extends FlatSpec with Matchers {
   }
 
   it should "persist and unpersist a flink DDF" in {
-    val manager: DDFManager = DDFManager.get("flink")
+    val manager: DDFManager = DDFManager.get(EngineType.FLINK)
     val ddf: DDF = manager.newDDF
 
     val uri: PersistenceUri = ddf.persist

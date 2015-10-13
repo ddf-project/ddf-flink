@@ -86,7 +86,7 @@ public class FlinkDDFExample {
         DDFManager manager = null;
         StringBuffer buffer = new StringBuffer();
         try {
-            manager = DDFManager.get("flink");
+            manager = DDFManager.get(DDFManager.EngineType.FLINK);
         } catch (Exception ex) {
             System.out.println(ex);
             System.exit(-1);
