@@ -70,7 +70,6 @@ object RepresentationHandler {
     mayBeString match {
       case Success(s) if isNumeric && s.equalsIgnoreCase("NA") => null
       case Success(s) => s
-      case Failure(e) if isNumeric => null
       case Failure(e) => null
     }
   }
@@ -92,7 +91,7 @@ object RepresentationHandler {
           case ColumnType.BIGINT =>
             row.setField(idx, Try(colValue.toDouble).getOrElse(if (useDefaults) 0 else null))
           case ColumnType.TIMESTAMP =>
-            row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(new Date(0)))
+            row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(if (useDefaults) new Date(0) else null))
           case ColumnType.BOOLEAN =>
             row.setField(idx, Try(colValue.toBoolean).getOrElse(if (useDefaults) false else null))
         }

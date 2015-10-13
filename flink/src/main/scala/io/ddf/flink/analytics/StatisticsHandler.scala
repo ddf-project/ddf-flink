@@ -103,7 +103,9 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     val percentiles: Array[java.lang.Double] = Array(0.0001, 0.25, 0.5001, 0.75, .9999)
     columnNames.map { columnName =>
       val quantiles = getVectorQuantiles(columnName, percentiles)
+      // scalastyle:off magic.number
       new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
+      // scalastyle:on magic.number
     }.toArray
   }
 
@@ -144,7 +146,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
       ds =>
         val digests = ds.map {
           x =>
-            val rs = new TDigest(100)
+            val rs = new TDigest(Misc.compression)
             rs.add(x)
             rs
         }.reduce {

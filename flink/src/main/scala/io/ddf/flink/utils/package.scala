@@ -51,7 +51,7 @@ package object utils {
 
       // merge counters from other partitions. Formula can be found at:
       // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Covariance
-      override def merge(acc: Accumulator[(Double, Double), java.lang.Double]) = {
+      override def merge(acc: Accumulator[(Double, Double), java.lang.Double]): Unit = {
         val other = acc.asInstanceOf[CovarianceCounter]
         val totalCount = count + other.count
         Ck += other.Ck +
@@ -95,7 +95,7 @@ package object utils {
       }
 
 
-      def asDouble(elem: Any) = {
+      def asDouble(elem: Any): Double = {
         val mayBeDouble = Try(elem.toString.trim.toDouble)
         mayBeDouble.getOrElse(0.0)
       }
@@ -144,16 +144,24 @@ package object utils {
 
       @throws(classOf[Exception])
       override def open(parameters: Configuration) {
-        if (bins == null) this.accumulator = new HistogramForDouble()
-        else this.accumulator = new HistogramForDouble(bins)
+        if (bins == null) {
+          this.accumulator = new HistogramForDouble()
+        } else {
+          this.accumulator = new HistogramForDouble(bins)
+        }
         getRuntimeContext.addAccumulator(id, accumulator)
       }
 
       override def flatMap(in: Double, collector: Collector[Histogram]): Unit = this.accumulator.add(in)
     }
 
-    def qDigest(iterator: Iterator[Double]) = {
-      val qDigest = new QDigest(100)
+    // scalastyle:off magic.number
+    //This is compression used by both QDigest and TDigest to compute quantiles
+    val compression = 100
+    // scalastyle:on magic.number
+
+    def qDigest(iterator: Iterator[Double]): Array[QDigest] = {
+      val qDigest = new QDigest(compression)
       iterator.foreach(i => qDigest.offer(i.toLong))
       Array(qDigest)
     }
@@ -263,10 +271,11 @@ package object utils {
         case JoinType.LEFT =>
           val coGroup = toCoGroup.apply { (leftTuples, rightTuples) =>
             //left outer join will have all left tuples even if right do not have a match in the coGroup
-            if (rightTuples.isEmpty)
+            if (rightTuples.isEmpty) {
               for (left <- leftTuples) yield (left, null)
-            else
+            } else {
               for (left <- leftTuples; right <- rightTuples) yield (left, right)
+            }
 
           }
           coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
@@ -274,33 +283,35 @@ package object utils {
         case JoinType.RIGHT =>
           val coGroup = toCoGroup.apply { (leftTuples, rightTuples) =>
             //right outer join will have all right tuples even if left do not have a match in the coGroup
-            if (leftTuples.isEmpty)
+            if (leftTuples.isEmpty) {
               for (right <- rightTuples) yield (null, right)
-
-            else
+            } else {
               for (left <- leftTuples; right <- rightTuples) yield (left, right)
+            }
           }
           coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
 
         case JoinType.FULL =>
           val coGroup = toCoGroup.apply { (leftTuples, rightTuples) =>
             //full outer join will have all right/left tuples even if left/right do not have a match in the coGroup
-            if (rightTuples.isEmpty)
+            if (rightTuples.isEmpty) {
               for (left <- leftTuples) yield (left, null)
-            else if (leftTuples.isEmpty)
+            } else if (leftTuples.isEmpty) {
               for (right <- rightTuples) yield (null, right)
-            else
+            } else {
               for (left <- leftTuples; right <- rightTuples) yield (left, right)
+            }
           }
           coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
 
         case _ =>
           val coGroup = toCoGroup.apply { (leftTuples, rightTuples) =>
             //semi/inner join will only have tuples which have a match on both sides
-            if (leftTuples.hasNext && rightTuples.hasNext)
+            if (leftTuples.hasNext && rightTuples.hasNext) {
               for (left <- leftTuples; right <- rightTuples) yield (left, right)
-            else
+            } else {
               null
+            }
           }
           coGroup.flatMap(Joins.mergeIterator(_, joinedColNames, leftSchema, rightSchema))
       }
@@ -317,10 +328,22 @@ package object utils {
     }
 
 
-    def merge(row1: Row, row2: Row, joinedColNames: Seq[Schema.Column], leftSchema: Schema, rightSchema: Schema) = {
+    def merge(row1: Row,
+              row2: Row,
+              joinedColNames: Seq[Schema.Column],
+              leftSchema: Schema,
+              rightSchema: Schema): Row = {
       val row: Row = new Row(joinedColNames.size)
-      val r1 = if (row1 == null) new Row(leftSchema.getNumColumns) else row1
-      val r2 = if (row2 == null) new Row(rightSchema.getNumColumns) else row2
+      val r1 = if (Misc.isNull(row1)) {
+        new Row(leftSchema.getNumColumns)
+      } else {
+        row1
+      }
+      val r2 = if (Misc.isNull(row2)) {
+        new Row(rightSchema.getNumColumns)
+      } else {
+        row2
+      }
       var i = 0
       joinedColNames.foreach { colName =>
         val colIdx = leftSchema.getColumnIndex(colName.getName)
@@ -355,7 +378,10 @@ package object utils {
 
   object Sorts {
     //TODO use sort partitions followed by reduce on a single partition
-    def sort(ds: DataSet[Row], schema: Schema, orderFields: Seq[String], orderAsc: Array[Boolean]) = {
+    def sort(ds: DataSet[Row],
+             schema: Schema,
+             orderFields: Seq[String],
+             orderAsc: Array[Boolean]): DataSet[Row] = {
       val orderFieldIndices: Seq[Int] = orderFields.map { field =>
         val idx = schema.getColumnIndex(field)
         idx
@@ -393,32 +419,35 @@ package object utils {
 
     @transient var parser = initParser
 
-    def getParser = {
-      if (parser == null) parser = initParser
+    def getParser: CsvParser = {
+      if (Misc.isNull(parser)) {
+        parser = initParser
+      }
       parser
     }
 
-    def initParser = {
+    private def initParser: CsvParser = {
       val parserSettings = new SerCsvParserSettings()
       parserSettings.setIgnoreLeadingWhitespaces(false)
       parserSettings.setIgnoreTrailingWhitespaces(false)
       parserSettings.getFormat.setDelimiter(delimiter)
-      if (emptyValue != null)
+      if (!Misc.isNull(emptyValue)) {
         parserSettings.setEmptyValue(emptyValue)
-      if (nullValue != null)
+      }
+      if (!Misc.isNull(nullValue)) {
         parserSettings.setNullValue(nullValue)
+      }
       new CsvParser(parserSettings)
     }
 
-
     override def readRecord(reuse: Array[String], bytes: Array[Byte], offset: Int, byteSize: Int): Array[String] = {
       var numBytes = byteSize
-      if (this.getDelimiter() != null && this.getDelimiter().length == 1 && this.getDelimiter()(0) == 10
+      if (this.getDelimiter != null && this.getDelimiter.length == 1 && this.getDelimiter()(0) == 10
         && offset + numBytes >= 1 && bytes(offset + numBytes - 1) == 13) {
         numBytes = numBytes - 1
       }
 
-      val line = new String(bytes, offset, numBytes, this.charsetName);
+      val line = new String(bytes, offset, numBytes, this.charsetName)
       getParser.parseLine(line)
     }
   }
