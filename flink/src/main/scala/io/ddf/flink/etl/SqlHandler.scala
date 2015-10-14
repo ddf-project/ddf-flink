@@ -255,6 +255,13 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     internalSql(command)
   }
 
+  override def sqlHandle(sqlcmd: String,
+                         maxRows: Integer,
+                         dataSource: DataSourceDescriptor,
+                         tableNameReplacer: TableNameReplacer): SqlResult = {
+    sql(sqlcmd, maxRows, dataSource)
+  }
+
   private def internalSqlTyped(command: String,
                                optionalLimit: Option[Integer] = None,
                                optionalDataSource: Option[DataSourceDescriptor] = None): SqlTypedResult = {
