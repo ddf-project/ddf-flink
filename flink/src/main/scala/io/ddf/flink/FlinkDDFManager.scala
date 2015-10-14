@@ -108,5 +108,5 @@ class FlinkDDFManager extends DDFManager {
 
 object FlinkConstants {
   val ENGINE_NAME: String = "flink"
-  val NAMESPACE: String = "FlinkDDF"
+  val NAMESPACE: String = "adatao"
 }

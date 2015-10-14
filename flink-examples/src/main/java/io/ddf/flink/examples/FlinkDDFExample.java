@@ -5,6 +5,7 @@ import io.ddf.DDFManager;
 import io.ddf.analytics.Summary;
 import io.ddf.etl.IHandleMissingData;
 import io.ddf.exception.DDFException;
+import io.ddf.DDFManager.EngineType;
 import io.ddf.flink.ml.FlinkMLFacade;
 import io.ddf.ml.IModel;
 import io.ddf.types.AggregateTypes;
@@ -86,7 +87,7 @@ public class FlinkDDFExample {
         DDFManager manager = null;
         StringBuffer buffer = new StringBuffer();
         try {
-            manager = DDFManager.get(DDFManager.EngineType.FLINK);
+            manager = DDFManager.get(EngineType.FLINK);
         } catch (Exception ex) {
             System.out.println(ex);
             System.exit(-1);

@@ -47,7 +47,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     val schema: Schema = new Schema(c.tableName, cols.toList)
     val manager: DDFManager = this.getManager
     val typeSpecs: Array[Class[_]] = Array(classOf[String])
-    val ddf = manager.newDDF(null, typeSpecs, theDDF.getNamespace, c
+    val ddf = manager.newDDF("test", typeSpecs, theDDF.getNamespace, c
       .tableName, schema)
     ddf
   }

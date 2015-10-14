@@ -12,7 +12,6 @@ public class FlinkDDF extends DDF {
     public FlinkDDF(DDFManager manager,
                     Object data,
                     Class<?>[] typeSpecs,
-                    String engineName,
                     String namespace,
                     String name,
                     Schema schema) throws DDFException {
