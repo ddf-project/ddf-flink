@@ -5,7 +5,7 @@ import java.{lang, util}
 import io.ddf.DDF
 import io.ddf.facades.MLFacade
 import io.ddf.ml.{CrossValidationSet, IModel, ISupportML}
-import org.apache.flink.ml.common.ParameterMap
+import org.apache.flink.ml.common.{LabeledVector, ParameterMap}
 
 
 class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlSupporter) {

@@ -99,13 +99,24 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     result.collect().sortBy(_._1).map(_._2).toArray
   }
 
+  private def getNumericColumns(columnNames: util.List[String]): util.List[String] = {
+    columnNames.filter(col => this.getDDF.getColumn(col).isNumeric)
+  }
+
   override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = {
     val percentiles: Array[java.lang.Double] = Array(0.0001, 0.25, 0.5001, 0.75, .9999)
+
+    val numericColNames = this.getNumericColumns(columnNames)
     columnNames.map { columnName =>
-      val quantiles = getVectorQuantiles(columnName, percentiles)
-      // scalastyle:off magic.number
-      new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
-      // scalastyle:on magic.number
+      if (numericColNames.contains(columnName)) {
+        val quantiles = getVectorQuantiles(columnName, percentiles)
+        // scalastyle:off magic.number
+        new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
+        // scalastyle:on magic.number
+      } else {
+        new FiveNumSummary(Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+          Double.NaN)
+      }
     }.toArray
   }
 

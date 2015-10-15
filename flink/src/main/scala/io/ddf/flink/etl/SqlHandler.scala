@@ -48,7 +48,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     val schema: Schema = new Schema(c.tableName, cols.toList)
     val manager: DDFManager = this.getManager
     val typeSpecs: Array[Class[_]] = Array(classOf[String])
-    val ddf = manager.newDDF("test", typeSpecs, theDDF.getNamespace, c
+    val ddf = manager.newDDF(null, typeSpecs, theDDF.getNamespace, c
       .tableName, schema)
     ddf
   }
@@ -56,7 +56,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
   protected def select2ddf(ddf: DDF, s: Select, optionalSchema: Option[Schema] = None): DDF = {
     s.validate
-    val ddf = this.getManager.getDDF(UUID.fromString(s.relations.head.getTableName))
+    val ddf = this.getManager.getDDFByName(s.relations.head.getTableName)
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
     val table: DataSet[Row] = ddf.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[DataSet[Row]]
     val where = s.where.orNull
@@ -228,7 +228,9 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
         val ddf = select2ddf(theDDF, selectStmt)
         val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
-        (ddf.getSchema, seqAsJavaList(table.collect().map(_.toString())))
+        // (ddf.getSchema, seqAsJavaList(table.collect().map(_.toString())))
+        (ddf.getSchema, seqAsJavaList(table.collect().map(row => row
+          .productIterator.map(_.toString).mkString("\t"))))
     }
   }
 
