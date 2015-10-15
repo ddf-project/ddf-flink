@@ -139,12 +139,15 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
 
   private def stringToAggregateField(aggrFn: String): AggregateField = {
     val terms = aggrFn.split("=")
-    val field  = if (terms.length > 1) {
-      AggregateField.fromFieldSpec(terms(1).trim)
+    val field = if (terms.length > 1) {
+      AggregateField.fromFieldSpec(terms(1).trim).setName(terms(0).trim)
     } else {
-      AggregateField.fromFieldSpec(terms(0).trim)
+      //renaming column as fn_col since flink table API does not support ( and ) in alias
+      val x= AggregateField.fromFieldSpec(terms(0).trim)
+      val name = s"${x.getAggregateFunction.name()}_${x.getColumn}"
+      x.setName(name)
     }
-    field.setName(terms(0).trim)
+    field
   }
 
   private def aggrFieldToSchemaColumn(fields: Seq[AggregateField]): Seq[Column] = {
@@ -162,15 +165,23 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     aggregate(fields)
   }
 
+  private def generateSelectWithAlias(columns: Seq[String], labels: Seq[String]): String = {
+    columns.zip(labels).map {
+      case (colName, label) => s"$colName as $label"
+    }.mkString(",")
+  }
+
   override def groupBy(groupedColumns: util.List[String], aggregateFunctions: util.List[String]): DDF = {
     val aggregateFields: util.List[AggregateField] = aggregateFunctions.map(stringToAggregateField)
     val table = getCleanTable(groupedColumns ++ aggregateFields.map(_.getColumn))
     val fields: Seq[String] = getFields(aggregateFields)
     val selectedColumns: Seq[String] = (fields ++ groupedColumns).distinct
-    val groupedData = table.groupBy(groupedColumns.map(_.trim).mkString(",")).select(selectedColumns.mkString(","))
     val columns = aggrFieldToSchemaColumn(aggregateFields)
     val groupedSchemaColumns = groupedColumns.map(ddf.getSchema.getColumn)
-    table2DDF(groupedData, (columns ++ groupedSchemaColumns).distinct)
+    val requiredColumns = (columns ++ groupedSchemaColumns).map(_.getName)
+    val selectWithAlias: String = generateSelectWithAlias(selectedColumns, requiredColumns)
+    val groupedData = table.groupBy(groupedColumns.map(_.trim).mkString(",")).select(selectWithAlias)
+    table2DDF(groupedData, (columns ++ groupedSchemaColumns))
   }
 
   override def computeCorrelation(columnA: String, columnB: String): Double = {
