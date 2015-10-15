@@ -22,13 +22,13 @@ class AggregationHandlerSpec extends BaseSpec {
     val l2: java.util.List[String] = List("mean(V16)")
 
     val avgDelayByDay = ddf.groupBy(l1, l2)
-    avgDelayByDay.getColumnNames should (contain("AVG(V16)") and contain("V3"))
+    avgDelayByDay.getColumnNames should (contain("mean(V16)") and contain("V3"))
   }
 
   it should "group and aggregate in 2 steps" in {
     val ddf2 = ddf.getAggregationHandler.groupBy(List("V3"))
     val result = ddf2.getAggregationHandler.agg(List("mean=avg(V15)"))
-    result.getColumnNames should (contain("AVG(V15)") and contain("V3"))
+    result.getColumnNames should (contain("mean") and contain("V3"))
   }
 
   it should "throw an error on aggregate without groups" in {
@@ -39,6 +39,6 @@ class AggregationHandlerSpec extends BaseSpec {
 
   it should "calculate correlation" in {
     //0.8977184691827954
-    ddf.correlation("V15", "V16") should be (0.89 +- 1)
+    ddf.correlation("V15", "V16") should be(0.89 +- 1)
   }
 }

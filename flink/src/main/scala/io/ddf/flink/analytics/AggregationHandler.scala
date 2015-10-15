@@ -139,18 +139,19 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
 
   private def stringToAggregateField(aggrFn: String): AggregateField = {
     val terms = aggrFn.split("=")
-    if (terms.length > 1) {
-      AggregateField.fromFieldSpec(terms(1).trim).setName(terms(0).trim)
+    val field  = if (terms.length > 1) {
+      AggregateField.fromFieldSpec(terms(1).trim)
     } else {
       AggregateField.fromFieldSpec(terms(0).trim)
     }
+    field.setName(terms(0).trim)
   }
 
   private def aggrFieldToSchemaColumn(fields: Seq[AggregateField]): Seq[Column] = {
     val schema = ddf.getSchema
     val columns = fields.map {
       case x if x.isAggregated =>
-        new Column(x.getAggregateFunction.toString(x.getColumn), ColumnType.DOUBLE)
+        new Column(x.mName, ColumnType.DOUBLE)
       case other =>
         schema.getColumn(other.getColumn)
     }
