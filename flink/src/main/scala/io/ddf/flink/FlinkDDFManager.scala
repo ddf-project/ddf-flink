@@ -3,6 +3,7 @@ package io.ddf.flink
 import java.security.SecureRandom
 import java.util.UUID
 
+import io.ddf.DDFManager.EngineType
 import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.exception.DDFException
@@ -20,6 +21,8 @@ class FlinkDDFManager extends DDFManager {
   private val flinkExecutionEnvironment: ExecutionEnvironment = createExecutionEnvironment
 
   private final val logger = LoggerFactory.getLogger(getClass)
+
+  this.setEngineType(EngineType.FLINK)
 
   override def getEngine: String = ENGINE_NAME
 

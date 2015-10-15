@@ -9,6 +9,7 @@ import scala.collection.JavaConverters._
 class BaseSpec extends FlatSpec with Matchers {
   val flinkDDFManager = DDFManager.get(EngineType.FLINK)
     .asInstanceOf[FlinkDDFManager]
+  flinkDDFManager.setEngineType(EngineType.FLINK)
   var lDdf: DDF = null
 
   def ddf = loadDDF()
