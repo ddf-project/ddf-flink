@@ -155,17 +155,6 @@ package object utils {
       override def flatMap(in: Double, collector: Collector[Histogram]): Unit = this.accumulator.add(in)
     }
 
-    // scalastyle:off magic.number
-    //This is compression used by both QDigest and TDigest to compute quantiles
-    val compression = 100
-    // scalastyle:on magic.number
-
-    def qDigest(iterator: Iterator[Double]): Array[QDigest] = {
-      val qDigest = new QDigest(compression)
-      iterator.foreach(i => qDigest.offer(i.toLong))
-      Array(qDigest)
-    }
-
     def getDoubleColumn(ddf: DDF, columnName: String): Option[DataSet[Double]] = {
       val schema = ddf.getSchema
       val column: Column = schema.getColumn(columnName)

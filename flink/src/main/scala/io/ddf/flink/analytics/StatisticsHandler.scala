@@ -139,14 +139,14 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     Misc.collectCovariance(manager.getExecutionEnvironment, dataSet, xIndex, yIndex)
   }
 
-  private def getTDigest(columnName: String, percentiles: Array[lang.Double]): TDigest = {
+  private def getTDigest(columnName: String): TDigest = {
     val maybeDataSet: Option[DataSet[Double]] = getDoubleColumn(columnName)
 
     maybeDataSet.map {
       ds =>
         val digests = ds.map {
           x =>
-            val rs = new TDigest(Misc.compression)
+            val rs = new TDigest(100)
             rs.add(x)
             rs
         }.reduce {
@@ -163,38 +163,18 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
     }.orNull
   }
 
-  private def getQDigest(columnName: String): QDigest = {
-    val maybeDataSet: Option[DataSet[Double]] = getDoubleColumn(columnName)
-    maybeDataSet.map {
-      ds =>
-        val digests = ds.mapPartition {
-          x => Misc.qDigest(x)
-        }.reduce {
-          (x, y) => QDigest.unionOf(x, y)
-        }
-        val reducedList: util.List[QDigest] = digests.collect()
-        val finalDigest = reducedList.reduce {
-          (x, y) => QDigest.unionOf(x, y)
-        }
-        finalDigest
-    }.orNull
-  }
-
-
   override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = {
     val column = ddf.getColumn(columnName)
-    if (ColumnType.isIntegral(column.getType)) {
-      val qDigest = getQDigest(columnName)
+    if (ColumnType.isNumeric(column.getType)) {
+      val tDigest = getTDigest(columnName)
       percentiles.map { p =>
-        val quantile: lang.Double = qDigest.getQuantile(p).toDouble
-        quantile
-      }
-    } else if (ColumnType.isFractional(column.getType)) {
-      val tDigest = getTDigest(columnName, percentiles)
-      percentiles.map {
-        p =>
-          val quantile: lang.Double = tDigest.quantile(p)
+        val quantile = tDigest.quantile(p)
+        val result: lang.Double = if (ColumnType.isIntegral(column.getType)) {
+          quantile.floor
+        } else {
           quantile
+        }
+        result
       }
     } else {
       throw new DDFException(new UnsupportedOperationException("Quantiles can only be calculated for numeric columns"))
