@@ -45,4 +45,10 @@ class ViewHandlerSpec extends BaseSpec {
       ddf.VIEWS.getRandomSample(5.0, false, 1)
     }
   }
+
+  it should "get top 3 rows" in {
+    val sample = flinkDDFManager.sql2ddf("SELECT Month from airline")
+    flinkDDFManager.setDDFName(sample, "sample")
+    sample.VIEWS.head(3) should have size(3)
+  }
 }

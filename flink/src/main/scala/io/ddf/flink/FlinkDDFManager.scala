@@ -104,6 +104,11 @@ class FlinkDDFManager extends DDFManager {
   override def getOrRestoreDDF(uuid: UUID): DDF = {
     throw new DDFException("this is currently unsupported", new UnsupportedOperationException)
   }
+
+  override def setDDFName(ddf: DDF, name: String): Unit = {
+    super.setDDFName(ddf, name)
+    ddf.getSchema.setTableName(name)
+  }
 }
 
 object FlinkConstants {
