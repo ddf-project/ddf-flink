@@ -12,8 +12,10 @@ import scala.collection.JavaConversions._
 
 
 class ViewHandler(ddf: DDF) extends io.ddf.content.ViewHandler(ddf) {
+  private val arrObjTypeSpecs: String = RepresentationHandler.DATASET_ARR_OBJECT.getTypeSpecsString
+
   override def getRandomSample(numSamples: Int, withReplacement: Boolean, seed: Int): util.List[Array[AnyRef]] = {
-    val dataSet:DataSet[Array[Object]] = ddf.getRepresentationHandler.get(RepresentationHandler.DATASET_ARR_OBJECT.getTypeSpecsString).asInstanceOf[DataSet[Array[Object]]]
+    val dataSet:DataSet[Array[Object]] = ddf.getRepresentationHandler.get(arrObjTypeSpecs).asInstanceOf[DataSet[Array[Object]]]
     val count = dataSet.count
     val fraction = Samples.computeFractionForSampleSize(numSamples, count,withReplacement)
     seqAsJavaList(Samples.randomSample(dataSet,withReplacement,fraction,seed).collect())
@@ -23,7 +25,7 @@ class ViewHandler(ddf: DDF) extends io.ddf.content.ViewHandler(ddf) {
     if (percent > 1 || percent < 0) {
       throw new IllegalArgumentException("Sampling fraction must be from 0 to 1")
     } else {
-      val dataSet: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(RepresentationHandler.DATASET_ARR_OBJECT.getTypeSpecsString).asInstanceOf[DataSet[Array[Object]]]
+      val dataSet: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(arrObjTypeSpecs).asInstanceOf[DataSet[Array[Object]]]
       val newDS: DataSet[Array[Object]] = Samples.randomSample(dataSet, withReplacement, percent, seed)
       val manager = ddf.getManager
       val columns = ddf.getSchema.getColumns

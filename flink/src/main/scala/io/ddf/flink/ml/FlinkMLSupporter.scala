@@ -52,11 +52,12 @@ class FlinkMLSupporter(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IS
 
     val schema = new Schema(null, outputColumns.asJava)
 
-    this.getManager.newDDF(this.getManager, resultDs, (classOf[DataSet[_]] +: resultType).toArray, this.getManager.getNamespace, null, schema)
+    this.getManager.newDDF(this.getManager, resultDs, (classOf[DataSet[_]] +: resultType).toArray, this.getManager.getNamespace, schema.getTableName, schema)
   }
 
   override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util
   .List[CrossValidationSet] = {
+
     CrossValidation.DDFRandomSplit(this.getDDF, k, trainingSize, seed)
   }
 
@@ -64,6 +65,8 @@ class FlinkMLSupporter(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IS
   = {
     CrossValidation.DDFKFoldSplit(this.getDDF, k, seed)
   }
+
+  // scalastyle:on method.name
 
   override def getConfusionMatrix(model: IModel, threshold: Double): Array[Array[Long]] = {
     val ddf: FlinkDDF = this.getDDF.asInstanceOf[FlinkDDF]
@@ -102,10 +105,13 @@ object DatasetTypes {
 
   sealed trait EnumVal
 
+  // scalastyle:off object.name
   case object train extends EnumVal
 
   case object test extends EnumVal
 
   case object result extends EnumVal
+
+  // scalastyle:on object.name
 
 }

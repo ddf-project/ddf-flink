@@ -6,6 +6,7 @@ import io.ddf.analytics.Summary;
 import io.ddf.etl.IHandleMissingData;
 import io.ddf.exception.DDFException;
 import io.ddf.DDFManager.EngineType;
+import io.ddf.flink.FlinkConstants;
 import io.ddf.flink.ml.FlinkMLFacade;
 import io.ddf.ml.IModel;
 import io.ddf.types.AggregateTypes;
@@ -34,7 +35,7 @@ public class FlinkDDFExample {
         buffer.append("\nmean(mpg) grouped by vs and carb at(1,1) is " + aggrMean.get("1,1")[0]);
 
         AggregateTypes.AggregationResult aggrComb = ddf.aggregate("vs, am, sum(mpg), min(hp)");
-        buffer.append("\nsum(mpg),min(hp) grouped by vs and am at(1,1) is " + aggrComb.get("1,1"));
+        buffer.append("\nsum(mpg),min(hp) grouped by vs and am at(1,1) are " + aggrComb.get("1,1")[0] + " and " + aggrComb.get("1,1")[1]);
 
         Double[] vectorVariance = ddf.getVectorVariance("mpg");
         buffer.append("\nvector variance for mpg is " + vectorVariance[0] + "," + vectorVariance[1]);
@@ -71,8 +72,8 @@ public class FlinkDDFExample {
 
     private static void runAlgos(DDFManager manager, String path, StringBuffer buffer) throws DDFException {
         buffer.append("\n ALgos ---");
-        manager.sql("create table iris (flower double, petal double, septal double)");
-        manager.sql("load '" + path + "' into iris");
+        manager.sql("create table iris (flower double, petal double, septal double)", FlinkConstants.ENGINE_NAME());
+        manager.sql("load '" + path + "' into iris", FlinkConstants.ENGINE_NAME());
         DDF trainDDF = manager.getDDFByName("iris");
         DDF testDDF = trainDDF.VIEWS.project("petal", "septal");
 
@@ -99,8 +100,8 @@ public class FlinkDDFExample {
         String algosDataPath = basePath + "/fisheriris.csv";
 
         //SQL2DDF
-        manager.sql("CREATE TABLE mtcars (mpg double, cyl int, disp double, hp int, drat double, wt double, qesc double, vs int, am int, gear int, carb string)");
-        manager.sql("load '" + basePath + "/mtcars' delimited by ' '  into mtcars");
+        manager.sql("CREATE TABLE mtcars (mpg double, cyl int, disp double, hp int, drat double, wt double, qesc double, vs int, am int, gear int, carb string)", FlinkConstants.ENGINE_NAME());
+        manager.sql("load '" + basePath + "/mtcars' delimited by ' '  into mtcars", FlinkConstants.ENGINE_NAME());
 
         DDF ddf = manager.sql2ddf("select * from mtcars");
 

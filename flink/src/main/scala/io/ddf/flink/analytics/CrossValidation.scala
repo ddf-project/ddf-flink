@@ -87,7 +87,9 @@ object CrossValidation {
 
     } else {
       val rdd = ddf.getRepresentationHandler().get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
-      if (isNull(rdd)) throw new DDFException("Cannot get RDD of Representation Array[Double], Array[Object] or Row")
+      if (isNull(rdd)) {
+        throw new DDFException("Cannot get RDD of Representation Array[Double], Array[Object] or Row")
+      }
       splits = randomSplit(rdd, numSplits, trainingSize, seed)
       unitType = classOf[Array[Object]]
     }
@@ -150,10 +152,10 @@ object CrossValidation {
       val trainSchema = new Schema(null, schema.getColumns)
 
       val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], unitType)
-      val trainDDF = manager.newDDF(manager, train, typeSpecs, nameSpace, null, trainSchema)
+      val trainDDF = manager.newDDF(manager, train, typeSpecs, nameSpace, trainSchema.getTableName, trainSchema)
 
       val testSchema = new Schema(null, schema.getColumns)
-      val testDDF = manager.newDDF(manager, test, typeSpecs, nameSpace, null, testSchema)
+      val testDDF = manager.newDDF(manager, test, typeSpecs, nameSpace, testSchema.getTableName, testSchema)
 
       cvSets.add(new CrossValidationSet(trainDDF, testDDF))
     }

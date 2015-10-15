@@ -12,7 +12,7 @@ object Common {
 
   lazy val theScalaVersion = "2.10.4"
 
-  lazy val flinkVersion = "0.9.0"
+  lazy val flinkVersion = "0.9.1"
 
   lazy val submodulePom = (
     <!--

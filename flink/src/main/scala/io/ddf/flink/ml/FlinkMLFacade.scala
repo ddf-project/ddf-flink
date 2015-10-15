@@ -28,14 +28,18 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
   }
 
   override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util.List[CrossValidationSet] = {
-    // this.getMLSupporter.CVRandom(k, trainingSize, seed)
+    this.getMLSupporter.CVRandom(k, trainingSize, seed)
     null
+  // scalastyle:off method.name
+
   }
 
   override def CVKFold(k: Int, seed: lang.Long): util.List[CrossValidationSet] = {
-    //this.getMLSupporter.CVKFold(k, seed)
+    this.getMLSupporter.CVKFold(k, seed)
     null
   }
+
+  // scalastyle:on method.name
 
   override def getConfusionMatrix(model: IModel, threshold: Double): Array[Array[Long]] = {
     this.getMLSupporter.getConfusionMatrix(model, threshold)

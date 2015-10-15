@@ -19,6 +19,7 @@ import org.apache.flink.api.table.typeinfo.{RenamingProxyTypeInfo, RowTypeInfo}
 import org.apache.flink.api.table.{Row, Table}
 import org.apache.flink.core.fs.Path
 
+import java.util.UUID
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
@@ -55,7 +56,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
   protected def select2ddf(ddf: DDF, s: Select, optionalSchema: Option[Schema] = None): DDF = {
     s.validate
-    val ddf = this.getManager.getDDFByName(s.relations.head.getTableName)
+    val ddf = this.getManager.getDDF(UUID.fromString(s.relations.head.getTableName))
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
     val table: DataSet[Row] = ddf.getRepresentationHandler.get(typeSpecs: _*).asInstanceOf[DataSet[Row]]
     val where = s.where.orNull
@@ -243,23 +244,16 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     new SqlResult(res._1, res._2)
   }
 
-  override def sql(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlResult = {
+  def sql(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlResult = {
     internalSql(command, Option(maxRows), Option(dataSource))
   }
 
-  override def sql(command: String, maxRows: Integer): SqlResult = {
+  def sql(command: String, maxRows: Integer): SqlResult = {
     internalSql(command, Option(maxRows))
   }
 
-  override def sql(command: String): SqlResult = {
+  def sql(command: String): SqlResult = {
     internalSql(command)
-  }
-
-  override def sqlHandle(sqlcmd: String,
-                         maxRows: Integer,
-                         dataSource: DataSourceDescriptor,
-                         tableNameReplacer: TableNameReplacer): SqlResult = {
-    sql(sqlcmd, maxRows, dataSource)
   }
 
   private def internalSqlTyped(command: String,
