@@ -7,6 +7,7 @@ import io.ddf.facades.MLFacade
 import io.ddf.ml.{CrossValidationSet, IModel, ISupportML}
 import org.apache.flink.ml.common.ParameterMap
 
+
 class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlSupporter) {
 
   private var iddf = ddf
@@ -120,5 +121,38 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
 
     this.train("als", paramMap)
   }
+
+  def kMeans(clusters: Option[Int] = None,
+             iterations: Option[Int] = None,
+             initialCentroids: Option[Seq[LabeledVector]] = None,
+             strategy: Option[String] = None,
+             overSamplingFactor: Option[Double] = None,
+             numPerRound: Option[Int] = None): IModel = {
+
+    import org.apache.flink.ml.clustering.{KMeans => FlinkKMeans}
+    val paramMap = {
+      val pmap = new ParameterMap()
+      clusters.map(c => pmap.add(FlinkKMeans.NumClusters, c))
+      iterations.map(i => pmap.add(FlinkKMeans.NumIterations, i))
+      initialCentroids.map(centroids => pmap.add(FlinkKMeans.InitialCentroids, centroids))
+      strategy.map(s => pmap.add(FlinkKMeans.InitialStrategy, s))
+      overSamplingFactor.map(o => pmap.add(FlinkKMeans.OversamplingFactor, o))
+      numPerRound.map(n => pmap.add(FlinkKMeans.KMeansParRounds, n))
+      pmap
+    }
+
+    this.train("kMeans", paramMap)
+
+  }
+
+  // scalastyle:off method.name
+  override def KMeans(numCentroids: Int, maxIters: Int, runs: Int, initMode: String): IModel = {
+    kMeans(Option(numCentroids), Option(runs), strategy = Option(initMode))
+  }
+
+  override def KMeans(numCentroids: Int, maxIters: Int, runs: Int): IModel = {
+    kMeans(Option(numCentroids), Option(runs))
+  }
+  // scalastyle:on method.name
 
 }

@@ -43,7 +43,10 @@ class StatisticsHandlerSpec extends BaseSpec {
     val pArray: Array[java.lang.Double] = Array(0.3, 0.5, 0.7)
     val expectedQuantiles: Array[java.lang.Double] = Array(801.0, 1416.0, 1644.0)
     val quantiles: Array[java.lang.Double] = ddf.getVectorQuantiles("V5", pArray)
-    quantiles should equal(expectedQuantiles)
+    implicit val doubleEquality = TolerantNumerics.tolerantDoubleEquality(20.01)
+    for (i <- pArray.indices) {
+      quantiles(i) === expectedQuantiles(i)
+    }
   }
 
   it should "calculate vector quantiles for double column" in {
