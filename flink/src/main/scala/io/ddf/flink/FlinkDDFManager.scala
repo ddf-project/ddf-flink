@@ -83,7 +83,8 @@ class FlinkDDFManager extends DDFManager {
 
   private def createExecutionEnvironment: ExecutionEnvironment = {
     val isLocal = java.lang.Boolean.parseBoolean(Config.getValue(ENGINE_NAME, "local"))
-    if (isLocal) {
+    val isSysoutLoggingEnabled = java.lang.Boolean.parseBoolean(Config.getValue(ENGINE_NAME, "enableSysoutLogging"))
+    val executionEnvironment: ExecutionEnvironment = if (isLocal) {
       ExecutionEnvironment.getExecutionEnvironment
     } else {
       val host = Config.getValue(ENGINE_NAME, "host")
@@ -91,6 +92,10 @@ class FlinkDDFManager extends DDFManager {
       val parallelism = java.lang.Integer.parseInt(Config.getValue(ENGINE_NAME, "parallelism"))
       ExecutionEnvironment.createRemoteEnvironment(host, port, parallelism)
     }
+    if (!isSysoutLoggingEnabled) {
+      executionEnvironment.getConfig.disableSysoutLogging()
+    }
+    executionEnvironment
   }
 
   override def transfer(fromEngine: String, ddfURI: String): DDF = {
