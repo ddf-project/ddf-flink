@@ -62,7 +62,7 @@ fi
 
 #setup java_opts
 export JAVA_OPTS+=" -Dhive.metastore.warehouse.dir=${HIVE_WAREHOUSE}"
-export JAVA_OPTS+=" -Dlog4j.configuration=ddf-local-log4j.properties"
+export JAVA_OPTS+=" -Dlog4j.configuration=file://$FWDIR/flink/conf/local/ddf-local-log4j.properties"
 
 CLASSPATH="$EXAMPLES_DIR"/target/scala-2.10/lib/*
 CLASSPATH="$SHELL_JAR:$CLASSPATH:$FWDIR/core/conf/local/:$FLINK_JAR"
