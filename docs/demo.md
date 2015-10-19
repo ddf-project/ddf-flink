@@ -6,97 +6,92 @@ start shell
 bin/ddf-shell
 ```
 
+imports required for demo
+```
+import io.ddf.DDF;
+import io.ddf.DDFManager;
+import io.ddf.content.SqlResult;
+import io.ddf.flink.FlinkConstants;
+```
+
 create DDFManager using flink
 
 ```
-import  io.ddf.DDFManager;
-DDFManager manager = DDFManager.get("flink");
-```
-
-create mtcars table and load data
-
-```
-manager.sql("CREATE TABLE mtcars (mpg double, cyl int, disp double, hp int, drat double, wt double, qesc double, vs int, am int, gear int, carb string)");
-manager.sql("load 'resources/test/mtcars' delimited by ' '  into mtcars");
+DDFManager manager = DDFManager.get(FlinkConstants.ENGINE_NAME());
 ```
 
 create airline table and load data
+
 ```
-manager.sql("create table airlineWithNA (Year int,Month int,DayofMonth int, DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int, CRSArrTime int,UniqueCarrier string, FlightNum int,  TailNum string, ActualElapsedTime int, CRSElapsedTime int,  AirTime int, ArrDelay int, DepDelay int, Origin string,  Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int,  CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )");
-manager.sql("load 'resources/test/airlineWithNA.csv' WITH NULL '' NO DEFAULTS into airlineWithNA");
+manager.sql("create table airline (Year int,Month int,DayofMonth int, DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int, CRSArrTime int,UniqueCarrier string, FlightNum int,  TailNum string, ActualElapsedTime int, CRSElapsedTime int,  AirTime int, ArrDelay int, DepDelay int, Origin string,  Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int,  CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME());
+manager.sql("load 'resources/test/airline.csv'  into airline",FlinkConstants.ENGINE_NAME());
 ```
 
 create ddf using sql2ddf
 ```
-DDF ddf = manager.sql2ddf("select * from mtcars");
+DDF table = manager.sql2ddf("select * from airline");
 ```
 
-basic statistics
+# Table like
 ```
-int rowCount = ddf.getNumRows();
+int rowCount = table.getNumRows();
 print(rowCount);
-print(ddf.getColumnNames());
+print(table.getNumColumns());
+print(table.getColumnNames());
 
-s= ddf.getSummary();
+DDF table2 = table.VIEWS.project("ArrDelay", "DepDelay", "Origin", "DayOfWeek", "Cancelled");
+print(table2.getColumnNames());
+
+SqlResult table3 = table2.sql("select * from @this where Origin='ISP'", "");
+print(table3.getRows().size());
+
+DDF table4 = table2.groupBy(Arrays.asList("Origin"), Arrays.asList("adelay=avg(ArrDelay)"));
+print(table4.getNumRows());
+topRows = table4.VIEWS.top(2, "adelay", "asc");
+print(topRows);
+```
+
+# R Dataframe: xtabs, quantile, histogram
+```
+DDF statsTable = table2.VIEWS.project("ArrDelay", "DepDelay", "DayOfWeek", "Cancelled");
+s= statsTable.getSummary();
 print(s[0]);
 
-aggrSum = ddf.aggregate("vs, carb, sum(mpg)");
-print(aggrSum.get("1,1"));
+fiveNumSummary = statsTable.getFiveNumSummary();
+print(fiveNumSummary[0]);
 
-aggrMean = ddf.aggregate("vs, carb, mean(mpg)");
-print(aggrMean.get("1,1"));
+DDF table5 = table.binning("Distance", "EQUALINTERVAL", 3, null, true, true);
+levels = table5.getColumn("Distance").getOptionalFactor().getLevelCounts();
+print(levels);
 
-aggrComb = ddf.aggregate("vs, am, sum(mpg), min(hp)");
-print(aggrComb.get("1,1"));
-
-vectorVariance = ddf.getVectorVariance("mpg");
-print(vectorVariance);
-
-vectorMean = ddf.getVectorMean("mpg");
-print(vectorMean);
-
+DDF rescaledDDF = table2.Transform.transformScaleMinMax();
+s= rescaledDDF.getSummary();
+print(s[0]);
 ```
 
-projections
+# Not MR
 ```
-newDDF = ddf.VIEWS.project("mpg","wt");
-print(newDDF.getColumnNames());
-```
+statsTable.setMutable(true);
+s= statsTable.getSummary();
+print(s[0]);
 
-transformScale
+statsTable.dropNA();
+s= statsTable.getSummary();
+print(s[0]);
 ```
-DDF rescaledDDF = ddf.Transform.transformScaleMinMax();
-print(rescaledDDF.getSummary()[0]);
+# Data Colab + Multi Languages
 ```
-
-dropNA
-```
-DDF airlineDDF = manager.sql2ddf("select * from airlineWithNA");
-cleanData = airlineDDF.dropNA();
-
-int rowCount = cleanData.getNumRows();
-print(rowCount);
-
+manager.setDDFName(table2, "flightInfo");
+DDF flightTable = manager.getDDFByName("flightInfo");
+flightTable.getColumnNames();
 ```
 
-ml
+# ML
 ```
-import io.ddf.flink.ml.FlinkMLFacade;
-import io.ddf.ml.IModel;
 
-import org.apache.flink.ml.classification.SVM;
-import scala.None$;
-import scala.Option;
+import org.apache.flink.ml.clustering.KMeans;
 
-Option None = None$.MODULE$;
+DDF mlData = table.VIEWS.project("ArrDelay", "DepDelay");
+KMeans kmeans = (KMeans) mlData.ML.KMeans(3, 5, 5).getRawModel();
 
-manager.sql("create table iris (flower double, petal double, septal double)");
-manager.sql("load 'resources/test/fisheriris.csv' into iris");
-DDF trainDDF = manager.getDDFByName("iris");
-DDF testDDF = trainDDF.VIEWS.project("petal", "septal");
-
-IModel imodel = ((FlinkMLFacade) trainDDF.ML).svm(None, None, None, None, None, None);
-
-DDF result = testDDF.ML.applyModel(imodel);
-print(result.getNumRows());
 ```
