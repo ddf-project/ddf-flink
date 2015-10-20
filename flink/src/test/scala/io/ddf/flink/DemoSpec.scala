@@ -1,6 +1,7 @@
 package io.ddf.flink
 
 import io.ddf.DDFManager
+import io.ddf.DDFManager.EngineType
 import io.ddf.flink.ml.FlinkMLFacade
 import org.apache.flink.ml.clustering.KMeans
 import org.scalatest.{FlatSpec, Matchers}
@@ -11,7 +12,7 @@ class DemoSpec extends FlatSpec with Matchers {
   it should "run all commands" in {
 
 
-    val mgr = DDFManager.get(FlinkConstants.ENGINE_NAME)
+    val mgr = DDFManager.get(EngineType.FLINK)
 
     val filePath = getClass.getResource("/airline.csv").getPath
 //    val filePath = "/home/shiti/work/adatao/ddf-with-flink/resources/test/airline.csv"
