@@ -13,7 +13,7 @@ public class Demo {
 
     public static void main(String[] args) throws DDFException {
         try {
-            DDFManager manager = DDFManager.get(FlinkConstants.ENGINE_NAME());
+            DDFManager manager = DDFManager.get(DDFManager.EngineType.FLINK);
             String basePath = args[0];
             String filePath = basePath + "/airline.csv";
             manager.sql("create table airline (Year int,Month int,DayofMonth int, DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int, CRSArrTime int,UniqueCarrier string, FlightNum int,  TailNum string, ActualElapsedTime int, CRSElapsedTime int,  AirTime int, ArrDelay int, DepDelay int, Origin string,  Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int,  CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME());
