@@ -59,7 +59,7 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
       case AggregateFunction.MIN => "min"
       case AggregateFunction.SUM => "sum"
       //TODO check what happens for count(*)
-      //      case AggregateFunction.COUNT => "count"
+      case AggregateFunction.COUNT => "count"
       case other => throw new RuntimeException(s"The method $other is currently not supported")
     }
   }
