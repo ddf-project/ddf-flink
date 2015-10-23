@@ -230,7 +230,9 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
         val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
         // (ddf.getSchema, seqAsJavaList(table.collect().map(_.toString())))
         (ddf.getSchema, seqAsJavaList(table.collect().map(row => row
-          .productIterator.map(_.toString).mkString("\t"))))
+          .productIterator.map(
+            cell => if (cell == null) "" else cell.toString
+          ).mkString("\t"))))
     }
   }
 
