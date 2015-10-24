@@ -1,9 +1,8 @@
 package io.ddf.flink.analytics
 
-import java.lang.Iterable
 import java.{lang, util}
 
-import com.clearspring.analytics.stream.quantile.{QDigest, TDigest}
+import com.clearspring.analytics.stream.quantile.TDigest
 import io.ddf.DDF
 import io.ddf.analytics.AStatisticsSupporter.FiveNumSummary
 import io.ddf.analytics._
@@ -11,55 +10,18 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.{Column, ColumnType}
 import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkDDFManager
+import io.ddf.flink.content.RepresentationHandler._
 import io.ddf.flink.utils.Misc
 import io.ddf.flink.utils.Misc._
-import org.apache.flink.api.common.functions.GroupReduceFunction
+import org.apache.flink.api.scala.table._
 import org.apache.flink.api.scala.{DataSet, _}
-import org.apache.flink.api.table.Row
-import org.apache.flink.util.Collector
+import org.apache.flink.api.table.{Row, Table}
 
 import scala.collection.JavaConversions._
 import scala.util.{Failure, Success, Try}
 
-class SummaryReducerFn extends GroupReduceFunction[(Int, String), (Int, Summary)] {
-  def computeSummary(numbers: Array[Double], countNA: Long): Summary = {
-    var summary: Summary = new Summary()
-    if (numbers.nonEmpty) {
-      summary = new Summary(numbers.toArray)
-      summary.addToNACount(countNA)
-    }
-    summary
-  }
-
-  override def reduce(iterable: Iterable[(Int, String)], collector: Collector[(Int, Summary)]): Unit = {
-    var colIndex = 0
-    var numbers = Seq.empty[Double]
-    var countNA = 0
-    iterable.foreach {
-      case (colId, value) =>
-        colIndex = colId
-        //continue if value is not null
-        if (!isNull(value)) {
-          val mayBeDouble = Try(value.toDouble)
-          mayBeDouble match {
-            case Success(number) =>
-              numbers = numbers :+ number
-            case Failure(other) =>
-              //if value is na increase countNA else ignore
-              if (value.equalsIgnoreCase("NA")) {
-                countNA += 1
-              }
-          }
-        }
-    }
-    val summary = computeSummary(numbers.toArray, countNA)
-    collector.collect((colIndex, summary))
-  }
-}
-
 class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
-  //TODO update this by computing Summary on single column
   private def getSummaryVector(columnName: String): Option[Summary] = {
     val schema = ddf.getSchema
     val column: Column = schema.getColumn(columnName)
@@ -75,28 +37,31 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   private def getDoubleColumn(columnName: String): Option[DataSet[Double]] = Misc.getDoubleColumn(ddf, columnName)
 
   override protected def getSummaryImpl: Array[Summary] = {
-    val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Array[Object]]).asInstanceOf[DataSet[Array[Object]]]
-    val colSize = ddf.getColumnNames.size()
-
-    val colData: GroupedDataSet[(Int, String)] = data.flatMap { row =>
-      (0 to colSize - 1).map {
-        index =>
-          //map each entry with its column index
-          val elem = row(index)
-          val elemOpt: String = Option(elem).map(_.toString.trim).orNull
-          (index, elemOpt)
-      }
-    }.groupBy {
-      //grouping column values by column index
-      x => x._1
+    val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(DATASET_ARR_OBJ_TYPE_SPECS: _*).asInstanceOf[DataSet[Array[Object]]]
+    val result = data.map {
+      row =>
+        row.map {
+          entry =>
+            val summary = new Summary()
+            if (!isNull(entry)) {
+              val mayBeDouble = Try(entry.toString.toDouble)
+              mayBeDouble match {
+                case Success(number) =>
+                  summary.merge(entry.toString.toDouble)
+                case Failure(other) =>
+                  //if value is na increase countNA else ignore
+                  if (entry.toString.equalsIgnoreCase("NA")) {
+                    summary.addToNACount(1)
+                  }
+              }
+            }
+            summary
+        }
+    }.reduce {
+      (x, y) =>
+        (x, y).zipped.map((xColSummary, yColSummary) => xColSummary.merge(yColSummary))
     }
-
-    //compute summary for group and return it with the group key
-    //the group key is required later on for sorting
-    val result = colData.reduceGroup[(Int, Summary)](new SummaryReducerFn)
-
-    //collect and sort by column index and return the summaries
-    result.collect().sortBy(_._1).map(_._2).toArray
+    result.collect().head
   }
 
   override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = {
@@ -119,12 +84,14 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   override def getVectorMean(columnName: String): lang.Double = {
-    val summary = getSummaryVector(columnName)
-    summary.map {
-      s =>
-        val result: lang.Double = s.mean
-        result
-    }.orNull
+    val column = ddf.getColumn(columnName)
+    if (column.isNumeric) {
+      val table = ddf.getRepresentationHandler.get(TABLE_TYPE_SPECS: _*).asInstanceOf[Table]
+      val row = table.select(s"$columnName.avg,$columnName").where(s"$columnName.isNotNull").first(1).collect().head
+      row.productElement(0).toString.toDouble
+    } else {
+      throw new DDFException("Mean can only be computed on Numeric columns")
+    }
   }
 
   override def getVectorCor(xColumnName: String, yColumnName: String): Double = {
@@ -133,7 +100,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
   override def getVectorCovariance(xColumnName: String, yColumnName: String): Double = {
     val manager = this.getManager.asInstanceOf[FlinkDDFManager]
-    val dataSet: DataSet[Row] = ddf.getRepresentationHandler.get(classOf[DataSet[_]], classOf[Row]).asInstanceOf[DataSet[Row]]
+    val dataSet: DataSet[Row] = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
     val xIndex = ddf.getSchema.getColumnIndex(xColumnName)
     val yIndex = ddf.getSchema.getColumnIndex(yColumnName)
     Misc.collectCovariance(manager.getExecutionEnvironment, dataSet, xIndex, yIndex)
