@@ -58,7 +58,6 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
       case AggregateFunction.MAX => "max"
       case AggregateFunction.MIN => "min"
       case AggregateFunction.SUM => "sum"
-      //TODO check what happens for count(*)
       case AggregateFunction.COUNT => "count"
       case other => throw new RuntimeException(s"The method $other is currently not supported")
     }
@@ -144,7 +143,7 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
       AggregateField.fromFieldSpec(terms(1).trim).setName(terms(0).trim)
     } else {
       //renaming column as fn_col since flink table API does not support ( and ) in alias
-      val x= AggregateField.fromFieldSpec(terms(0).trim)
+      val x = AggregateField.fromFieldSpec(terms(0).trim)
       val name = s"${x.getAggregateFunction.name()}_${x.getColumn}"
       x.setName(name)
     }

@@ -201,12 +201,13 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   /**
    * Parses a given sql string statement and performs corresponding action.
    * The limit option is only considered for a select statement.
-   * Note: the limit parameter has preference over the limit specified in the string query.
+   * Note: the limit specified in the string query has preference over the limit parameter.
    * @param command
    * @param limit
    * @return schema and rows
    */
-  def sql2List(command: String, limit: Option[Integer] = None): (Schema, util.List[String]) = {
+
+  def sql2List(command: String, limit: Int): (Schema, util.List[String]) = {
     val fn = parse(command)
     fn match {
       case c: Create =>
@@ -221,18 +222,21 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
       case s: Select =>
 
-        val selectStmt = limit.map {
-          resultLimit =>
-            Select(s.project, s.relations, s.where, s.group, s.order, resultLimit)
-        }.getOrElse(s)
+        val selectStmt = s
 
         val ddf = select2ddf(theDDF, selectStmt)
+        /*
         val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
         // (ddf.getSchema, seqAsJavaList(table.collect().map(_.toString())))
         (ddf.getSchema, seqAsJavaList(table.collect().map(row => row
           .productIterator.map(
             cell => if (cell == null) "" else cell.toString
           ).mkString("\t"))))
+        */
+        val rowDataset: DataSet[Row] = ddf.getRepresentationHandler.get(dsrTypeSpecs: _*).asInstanceOf[DataSet[Row]]
+        val rowStringDataset:DataSet[String] = rowDataset.map(row => row
+          .productIterator.map(cell => if (cell == null) "" else cell.toString).mkString("\t"))
+        (ddf.getSchema, seqAsJavaList(rowStringDataset.collect()))
     }
   }
 
@@ -241,19 +245,30 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   val tTypeSpecs: Array[Class[_]] = Array(classOf[Table])
   val dsoTypeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
 
+  private val DEFAULT_LIMIT: Int = 1000
+
   private def internalSql(command: String,
-                          optionalLimit: Option[Integer] = None,
+                          limit: Int = DEFAULT_LIMIT,
                           optionalDataSource: Option[DataSourceDescriptor] = None): SqlResult = {
-    val res = sql2List(command, optionalLimit)
+    val res = sql2List(command, limit)
     new SqlResult(res._1, res._2)
   }
 
-  def sql(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlResult = {
-    internalSql(command, Option(maxRows), Option(dataSource))
+  private def getLimit(maxRows:Integer):Int = {
+    if (isNull(maxRows)) {
+      DEFAULT_LIMIT
+    } else {
+      maxRows
+    }
   }
 
-  def sql(command: String, maxRows: Integer): SqlResult = {
-    internalSql(command, Option(maxRows))
+   def sql(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlResult = {
+    val limit: Int = getLimit(maxRows)
+    internalSql(command, limit, Option(dataSource))
+  }
+
+   def sql(command: String, maxRows: Integer): SqlResult = {
+    internalSql(command, getLimit(maxRows))
   }
 
   def sql(command: String): SqlResult = {
@@ -261,18 +276,18 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
   }
 
   private def internalSqlTyped(command: String,
-                               optionalLimit: Option[Integer] = None,
+                               limit: Int = DEFAULT_LIMIT,
                                optionalDataSource: Option[DataSourceDescriptor] = None): SqlTypedResult = {
-    val sqlResult = internalSql(command, optionalLimit, optionalDataSource)
+    val sqlResult = internalSql(command, limit, optionalDataSource)
     new SqlTypedResult(sqlResult)
   }
 
   override def sqlTyped(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlTypedResult = {
-    internalSqlTyped(command, Option(maxRows), Option(dataSource))
+    internalSqlTyped(command, getLimit(maxRows), Option(dataSource))
   }
 
   override def sqlTyped(command: String, maxRows: Integer): SqlTypedResult = {
-    internalSqlTyped(command, Option(maxRows))
+    internalSqlTyped(command, getLimit(maxRows))
   }
 
   override def sqlTyped(command: String): SqlTypedResult = {
