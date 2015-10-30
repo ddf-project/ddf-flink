@@ -26,32 +26,33 @@ class FlinkDDFManager extends DDFManager {
   override def getNamespace: String = NAMESPACE
 
   override def loadTable(fileURL: String, fieldSeparator: String): DDF = {
-    val fileData: DataSet[Array[Object]] = flinkExecutionEnvironment
-      .readTextFile(fileURL)
-      .map(_.split(fieldSeparator).map(_.asInstanceOf[Object]))
+
+    val fileData: DataSet[String] = flinkExecutionEnvironment.readTextFile(fileURL)
 
     // scalastyle:off magic.number
     val sampleSize = 5
     // scalastyle:on magic.number
 
-    val subset = fileData.first(sampleSize).map(_.map(_.toString)).collect()
-    val columns: Array[Column] = getColumnInfo(subset)
+    val subset = fileData.first(sampleSize).collect()
+    val columns: Array[Column] = getColumnInfo(subset,fieldSeparator)
 
-    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
+    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
     val rand: SecureRandom = new SecureRandom
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
 
     val schema: Schema = new Schema(tableName, columns)
-    val rowDS = RepresentationHandler.getRowDataSet(fileData, columns.toList, useDefaults = false)
+    val data = fileData.map(_.split(fieldSeparator).map(_.asInstanceOf[Object]))
+//    val rowDS = RepresentationHandler.getRowDataSet(fileData, columns.toList, useDefaults = false)
 
-    val ddf = this.newDDF(rowDS, typeSpecs, getEngine, getNamespace, tableName, schema)
+    val ddf = this.newDDF(data, typeSpecs, getEngine, getNamespace, tableName, schema)
     this.addDDF(ddf)
     ddf
   }
 
   def getExecutionEnvironment: ExecutionEnvironment = flinkExecutionEnvironment
 
-  def getColumnInfo(sampleData: Seq[Array[String]],
+  def getColumnInfo(sampleData: Seq[String],
+                    fieldSeparator:String,
                     hasHeader: Boolean = false,
                     doPreferDouble: Boolean = true): Array[Schema.Column] = {
 
@@ -63,7 +64,7 @@ class FlinkDDFManager extends DDFManager {
     //      return null
     //    }
 
-    val firstRow: Array[String] = sampleData.head
+    val firstRow: Array[String] = sampleData.head.split(fieldSeparator)
 
     val headers: Seq[String] = if (hasHeader) {
       firstRow.toSeq
@@ -74,7 +75,7 @@ class FlinkDDFManager extends DDFManager {
 
     val sampleStrings = if (hasHeader) sampleData.tail else sampleData
 
-    val samples = sampleStrings.toArray.transpose
+    val samples = sampleStrings.map(_.split(fieldSeparator)).toArray.transpose
 
     samples.zipWithIndex.map {
       case (col, i) => new Schema.Column(headers(i), Utils.determineType(col, doPreferDouble, false))
