@@ -52,7 +52,8 @@ lazy val flink = project.in(file("flink")).settings(commonSettings: _*).settings
     "com.clearspring.analytics" % "stream" % "2.7.0" exclude("asm", "asm"),
     "asm" % "asm" % "3.2",
     "org.scalatest" % "scalatest_2.10" % "2.2.2" % "test"
-  ) ++ com_adatao_unmanaged
+  ) ++ com_adatao_unmanaged,
+  testOptions in Test += Tests.Argument("-oD")
 )
 
 lazy val flinkExamples = project.in(file("flink-examples")).dependsOn(flink).settings(commonSettings: _*).settings(
