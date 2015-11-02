@@ -76,7 +76,7 @@ public class FlinkDDFExample {
         DDF trainDDF = manager.getDDFByName("iris");
         DDF testDDF = trainDDF.VIEWS.project("petal", "septal");
 
-        IModel imodel = ((FlinkMLFacade) trainDDF.ML).svm(None, None, None, None, None, None);
+        IModel imodel = ((FlinkMLFacade) trainDDF.ML).svm(None, None, None, None, None, None,None,None);
 
         DDF result = testDDF.ML.applyModel(imodel);
         buffer.append("\n rows in SVM result " + result.getNumRows());

@@ -30,8 +30,10 @@ class RepresentationHandler(ddf: DDF) extends RH(ddf) {
 
   //ML Related representations
   this.addConvertFunction(DATASET_ARR_DOUBLE, DATASET_LABELED_VECTOR, new ArrayDouble2LabeledVector(this.ddf))
+  this.addConvertFunction(DATASET_LABELED_VECTOR, DATASET_TUPLE2_VECTOR, new LabeledVectorToTuple2Vector(this.ddf))
   this.addConvertFunction(DATASET_ARR_DOUBLE, DATASET_VECTOR, new ArrayDouble2Vector(this.ddf))
   this.addConvertFunction(DATASET_LABELED_VECTOR, DATASET_ARR_DOUBLE, new LabeledVector2ArrayDouble(this.ddf))
+  this.addConvertFunction(DATASET_TUPLE2_VECTOR, DATASET_LABELED_VECTOR, new Tuple2VectorToLabeledVector(this.ddf))
   this.addConvertFunction(DATASET_ARR_OBJECT, DATASET_TUPLE2, new ArrayObject2Tuple2(this.ddf))
   this.addConvertFunction(DATASET_ARR_OBJECT, DATASET_TUPLE3, new ArrayObject2Tuple3(this.ddf))
   this.addConvertFunction(DATASET_TUPLE2, DATASET_ARR_OBJECT, new Tuple2ToArrayObject(this.ddf))
@@ -56,6 +58,7 @@ object RepresentationHandler {
   val DATASET_VECTOR = new Representation(classOf[DataSet[_]], classOf[FVector])
   val DATASET_TUPLE2 = new Representation(classOf[DataSet[_]], classOf[Tuple2[_, _]], classOf[Int], classOf[Int])
   val DATASET_TUPLE3 = new Representation(classOf[DataSet[_]], classOf[Tuple3[_, _, _]], classOf[Int], classOf[Int], classOf[Double])
+  val DATASET_TUPLE2_VECTOR = new Representation(classOf[DataSet[_]], classOf[Tuple2[_, _ ]], classOf[FVector], classOf[Double])
 
   def getRowDataSet(dataSet: DataSet[Array[Object]], columns: List[Column]): DataSet[Row] = {
     val dsType = dataSet.getType()

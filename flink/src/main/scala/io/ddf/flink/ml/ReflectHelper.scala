@@ -16,7 +16,7 @@ class ReflectHelper(className: String) {
   import ru._
 
   val fitOpTpe = typeOf[FitOperation[_, _]]
-  val predictOpTpe = typeOf[PredictOperation[_, _, _]]
+  val predictOpTpe = typeOf[PredictOperation[_, _, _,_]]
 
   val runtimeMirror = ru.runtimeMirror(getClass.getClassLoader)
   val mlModuleSymbol = runtimeMirror.staticModule(className)
@@ -83,7 +83,9 @@ class ReflectHelper(className: String) {
     }
   }
 
-  def predictOperator: PredictOperation[_, _, _] = pOp.asInstanceOf[PredictOperation[_, _, _]]
+  def predictOperator: PredictOperation[_, _, _,_] = {
+    pOp.asInstanceOf[PredictOperation[ _, _,_,_]]
+  }
 
   private def getClassFromType(tpe: Type, params: Option[List[Symbol]]): Class[_] = {
     val ts: JavaUniverse#Symbol = tpe.typeSymbol
@@ -105,6 +107,7 @@ class ReflectHelper(className: String) {
     case class Operations(fitOp: ru.Symbol, predictOp: ru.Symbol)
     var ops = Operations(null, null)
     val members = mlModuleSymbol.typeSignature.members.filter(m => m.isImplicit && m.isMethod).map(m => m -> m.asInstanceOf[MethodSymbol].returnType)
+    members.foreach(println)
     members.foreach {
       case (m, op) if op <:< fitOpTpe =>
         ops = ops.copy(fitOp = m)

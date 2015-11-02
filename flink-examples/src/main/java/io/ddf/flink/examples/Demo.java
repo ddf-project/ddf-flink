@@ -5,7 +5,7 @@ import io.ddf.DDFManager;
 import io.ddf.content.SqlResult;
 import io.ddf.exception.DDFException;
 import io.ddf.flink.FlinkConstants;
-import org.apache.flink.ml.clustering.KMeans;
+//import org.apache.flink.ml.clustering.KMeans;
 
 import java.util.Arrays;
 
@@ -51,8 +51,8 @@ public class Demo {
             statsTable.getSummary();
 
             // # ML
-            DDF mlData = table.VIEWS.project("ArrDelay", "DepDelay");
-            KMeans kmeans = (KMeans) mlData.ML.KMeans(3, 5, 5).getRawModel();
+           /* DDF mlData = table.VIEWS.project("ArrDelay", "DepDelay");
+            KMeans kmeans = (KMeans) mlData.ML.KMeans(3, 5, 5).getRawModel();*/
 
             // # Data Colab + Multi Languages
             manager.setDDFName(table2, "flightInfo");
