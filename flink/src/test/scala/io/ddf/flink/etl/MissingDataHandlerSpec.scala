@@ -75,7 +75,7 @@ class MissingDataHandlerSpec extends BaseSpec {
     val dict: Map[String, String] = Map("V1" -> "2000", "V28" -> "0", "V29" -> "1")
     val filledDDF = ddf1.getMissingDataHandler.fillNA(null, null, 0, null, dict, null)
     val annualDelay = filledDDF.aggregate("V1, sum(V29)").get("2008")(0)
-    annualDelay should be(302.0 +- 0.1)
+    annualDelay should be(282.0 +- 0.1)
   }
 
   it should "fill by aggregate function" in {

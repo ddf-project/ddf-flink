@@ -65,13 +65,33 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = {
-    val percentiles: Array[java.lang.Double] = Array(0.0001, 0.25, 0.5001, 0.75, .9999)
-    columnNames.map { columnName =>
-      val quantiles = getVectorQuantiles(columnName, percentiles)
-      // scalastyle:off magic.number
-      new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
-      // scalastyle:on magic.number
-    }.toArray
+    val percentiles: Array[java.lang.Double] = Array(0.00001, 0.99999, 0.25, 0.5, 0.75)
+    val data = ddf.getRepresentationHandler.get(DATASET_ARR_OBJ_TYPE_SPECS: _*).asInstanceOf[DataSet[Array[Object]]]
+    val tDigestDataset: DataSet[Array[TDigest]] = data.mapPartition {
+      rows =>
+        rows.map {
+          row =>
+            row.map { colValue =>
+              val tDigest = new TDigest(100)
+              if (!isNull(colValue)) {
+                tDigest.add(colValue.toString.toDouble)
+              }
+              tDigest
+            }
+        }
+    }.reduce {
+      (td1, td2) => (td1, td2).zipped.map {
+        (x, y) =>
+          x.add(y)
+          x
+      }
+    }
+    val tdigests = tDigestDataset.first(1).collect().head
+    tdigests.map {
+      td =>
+        val quantiles = percentiles.map(p => td.quantile(p))
+        new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
+    }
   }
 
   override def getVectorVariance(columnName: String): Array[lang.Double] = {
@@ -107,28 +127,24 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   private def getTDigest(columnName: String): TDigest = {
-    val maybeDataSet: Option[DataSet[Double]] = getDoubleColumn(columnName)
-
-    maybeDataSet.map {
-      ds =>
-        val digests = ds.map {
-          x =>
-            val rs = new TDigest(100)
-            rs.add(x)
-            rs
-        }.reduce {
-          (x, y) => x.add(y)
-            x
+    val table = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
+    val columnData: DataSet[Row] = table.select(columnName).where(s"$columnName.isNotNull")
+    val result = columnData.map {
+      row =>
+        val columnValue = row.productElement(0)
+        val rs = new TDigest(100)
+        if(!isNull(columnValue)){
+          rs.add(columnValue.toString.toDouble)
         }
-        val reducedList: util.List[TDigest] = digests.collect()
-        val finalDigest = reducedList.reduce {
-          (x, y) =>
-            x.add(y)
-            x
-        }
-        finalDigest
-    }.orNull
+        rs
+    }.reduce {
+      (x, y) =>
+        x.add(y)
+        x
+    }.collect().head
+    result
   }
+
 
   override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = {
     val column = ddf.getColumn(columnName)
@@ -180,7 +196,9 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
   private def getMinAndMaxValue(data: DataSet[Array[Object]], columnIndex: Int): (Double, Double) = {
     val defaultValue = (Double.NaN, Double.NaN)
-    val notNullValues: DataSet[Array[Object]] = data.filter { d => !isNull(d(columnIndex)) }
+    val notNullValues: DataSet[Array[Object]] = data.filter {
+      d => !isNull(d(columnIndex))
+    }
     val tupleDataset = notNullValues.map {
       d =>
         val numericValue = d(columnIndex).toString.toDouble
