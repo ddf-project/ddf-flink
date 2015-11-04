@@ -16,13 +16,7 @@ class Row2ArrayObject(@transient ddf: DDF) extends ConvertFunction(ddf) {
           case x: RowTypeInfo =>
             val rowDataSet = dataSet.asInstanceOf[DataSet[Row]]
             val columnSize = ddf.getColumnNames.length - 1
-            val arrDataSet: DataSet[Array[Object]] = rowDataSet.map {
-              r =>
-                val objArr: Array[Object] = (0 to columnSize).map { index =>
-                  r.productElement(index).asInstanceOf[Object]
-                }.toArray
-                objArr
-            }
+            val arrDataSet: DataSet[Array[Object]] = rowDataSet.map(_.elementArray).asInstanceOf[DataSet[Array[Object]]]
             new Representation(arrDataSet, RepresentationHandler.DATASET_ARR_OBJECT.getTypeSpecsString)
         }
     }

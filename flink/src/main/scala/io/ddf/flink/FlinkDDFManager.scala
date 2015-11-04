@@ -7,7 +7,7 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkConstants._
-import io.ddf.flink.content.RepresentationHandler
+import io.ddf.flink.content.{RowParser, RepresentationHandler}
 import io.ddf.flink.utils.Utils
 import io.ddf.misc.Config
 import io.ddf.{DDF, DDFManager}
@@ -41,8 +41,8 @@ class FlinkDDFManager extends DDFManager {
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
 
     val schema: Schema = new Schema(tableName, columns)
-    val data = fileData.map(_.split(fieldSeparator).map(_.asInstanceOf[Object]))
-//    val rowDS = RepresentationHandler.getRowDataSet(fileData, columns.toList, useDefaults = false)
+    val data: DataSet[Row] = fileData.map(_.split(fieldSeparator)).asInstanceOf[DataSet[Array[Object]]]
+      .map(ra => RowParser.parseRow(ra, columns.toList.zipWithIndex, useDefaults = false))
 
     val ddf = this.newDDF(data, typeSpecs, getEngine, getNamespace, tableName, schema)
     this.addDDF(ddf)

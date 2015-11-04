@@ -9,7 +9,7 @@ import io.ddf.datasource.{DataFormat, DataSourceDescriptor}
 import io.ddf.etl.ASqlHandler
 import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.content.SqlSupport._
-import io.ddf.flink.content.{Column2RowTypeInfo, RepresentationHandler}
+import io.ddf.flink.content.{RowParser, Column2RowTypeInfo, RepresentationHandler}
 import io.ddf.flink.utils.Misc._
 import io.ddf.flink.utils.{Joins, Sorts, StringArrayCsvInputFormat}
 import io.ddf.{DDF, DDFManager, TableNameReplacer}
@@ -29,16 +29,17 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
 
   def parse(input: String): Function = parser.parse(input)
 
-  protected def load2ddf(l: Load) = {
+  protected def load2ddf(l: Load): DDF = {
     val ddf = this.getManager.getDDFByName(l.tableName)
     val env = this.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
     val path = new Path(l.url)
     val csvInputFormat = new StringArrayCsvInputFormat(path, l.delimiter, emptyValue = l.emptyValue, nullValue = l.nullValue)
-    val dataSet: DataSet[Array[Object]] = env.readFile(csvInputFormat, l.url).map { row =>
-      row.map(_.asInstanceOf[Object])
-    }
-    val rowDS = RepresentationHandler.getRowDataSet(dataSet, ddf.getSchema.getColumns.asScala.toList, l.useDefaults)
-    ddf.getRepresentationHandler.set(rowDS, dsrTypeSpecs: _*)
+
+    val dataSet: DataSet[Row] = env.readFile(csvInputFormat, l.url)
+      .asInstanceOf[DataSet[Array[Object]]]
+      .map(ra => RowParser.parseRow(ra, ddf.getSchema.getColumns.toList.zipWithIndex, l.useDefaults))
+
+    ddf.getRepresentationHandler.set(dataSet, dsrTypeSpecs: _*)
     ddf
   }
 

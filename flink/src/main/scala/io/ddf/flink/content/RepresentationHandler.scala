@@ -56,25 +56,20 @@ object RepresentationHandler {
   val DATASET_TUPLE2 = new Representation(classOf[DataSet[_]], classOf[Tuple2[_, _ ]], classOf[Int], classOf[Int])
   val DATASET_TUPLE3 = new Representation(classOf[DataSet[_]], classOf[Tuple3[_,_,_]], classOf[Int], classOf[Int], classOf[Double])
 
-  private val dateFormat = new SimpleDateFormat()
-
-  def getRowDataSet(dataSet: DataSet[_], columns: List[Column], useDefaults: Boolean = true): DataSet[Row] = {
+  def getRowDataSet(dataSet: DataSet[_], columns: List[Column]): DataSet[Row] = {
     val idxColumns: Seq[(Column, Int)] = columns.zipWithIndex.toSeq
     implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo(columns)
-    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns, useDefaults))
+    //val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns, useDefaults))
+    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Any]]].map(a => new Row(a))
     rowDataSet
   }
+}
 
-  private def getFieldValue(elem: Object, isNumeric: Boolean): String = {
-    val mayBeString: Try[String] = Try(elem.toString.trim)
-    mayBeString match {
-      case Success(s) if isNumeric && s.equalsIgnoreCase("NA") => null
-      case Success(s) => s
-      case Failure(e) => null
-    }
-  }
+object RowParser extends Serializable {
 
-  private def parseRow(rowArray: Array[Object], idxColumns: Seq[(Column, Int)], useDefaults: Boolean): Row = {
+  private val dateFormat = new SimpleDateFormat()
+
+  def parseRow(rowArray: Array[Object], idxColumns: Seq[(Column, Int)], useDefaults: Boolean): Row = {
     val row = new Row(idxColumns.length)
     idxColumns foreach {
       case (col, idx) =>
@@ -100,6 +95,13 @@ object RepresentationHandler {
   }
 
 
+  private def getFieldValue(elem: Object, isNumeric: Boolean): String = {
+    val mayBeString: Try[String] = Try(elem.toString.trim)
+    mayBeString match {
+      case Success(s) if isNumeric && s.equalsIgnoreCase("NA") => null
+      case Success(s) => s
+      case Failure(e) => null
+    }
+  }
 }
-
 
