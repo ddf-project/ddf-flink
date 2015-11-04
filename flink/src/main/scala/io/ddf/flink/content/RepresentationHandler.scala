@@ -12,6 +12,7 @@ import org.apache.flink.api.table.{Row, Table}
 import org.apache.flink.ml.common.LabeledVector
 import org.apache.flink.ml.math.{Vector => FVector}
 
+import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 class RepresentationHandler(ddf: DDF) extends RH(ddf) {
@@ -53,54 +54,55 @@ object RepresentationHandler {
 
   val DATASET_LABELED_VECTOR = new Representation(classOf[DataSet[_]], classOf[LabeledVector])
   val DATASET_VECTOR = new Representation(classOf[DataSet[_]], classOf[FVector])
-  val DATASET_TUPLE2 = new Representation(classOf[DataSet[_]], classOf[Tuple2[_, _ ]], classOf[Int], classOf[Int])
-  val DATASET_TUPLE3 = new Representation(classOf[DataSet[_]], classOf[Tuple3[_,_,_]], classOf[Int], classOf[Int], classOf[Double])
+  val DATASET_TUPLE2 = new Representation(classOf[DataSet[_]], classOf[Tuple2[_, _]], classOf[Int], classOf[Int])
+  val DATASET_TUPLE3 = new Representation(classOf[DataSet[_]], classOf[Tuple3[_, _, _]], classOf[Int], classOf[Int], classOf[Double])
 
-  def getRowDataSet(dataSet: DataSet[_], columns: List[Column]): DataSet[Row] = {
+  def getRowDataSet(dataSet: DataSet[Array[Object]], columns: List[Column]): DataSet[Row] = {
+    val dsType = dataSet.getType()
     val idxColumns: Seq[(Column, Int)] = columns.zipWithIndex.toSeq
-    implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo(columns)
-    //val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Object]]].map(r => parseRow(r, idxColumns, useDefaults))
-    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Any]]].map(a => new Row(a))
+    implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo (columns)
+    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Any]]].map (a => new Row (a) )
     rowDataSet
+
   }
 }
 
 object RowParser extends Serializable {
 
   private val dateFormat = new SimpleDateFormat()
+  private val numformat = "[\\+\\-0-9.e]+".r
+  private val defaultNum = 0
+  private val defaultDate = new Date(0)
 
-  def parseRow(rowArray: Array[Object], idxColumns: Seq[(Column, Int)], useDefaults: Boolean): Row = {
-    val row = new Row(idxColumns.length)
-    idxColumns foreach {
-      case (col, idx) =>
-        val colValue: String = getFieldValue(rowArray(idx), col.isNumeric)
-        col.getType match {
-          case ColumnType.STRING =>
-            row.setField(idx, colValue)
-          case ColumnType.INT =>
-            row.setField(idx, Try(colValue.toInt).getOrElse(if (useDefaults) 0 else null))
-          case ColumnType.FLOAT =>
-            row.setField(idx, Try(colValue.toFloat).getOrElse(if (useDefaults) 0 else null))
-          case ColumnType.DOUBLE =>
-            row.setField(idx, Try(colValue.toDouble).getOrElse(if (useDefaults) 0 else null))
-          case ColumnType.BIGINT =>
-            row.setField(idx, Try(colValue.toDouble).getOrElse(if (useDefaults) 0 else null))
-          case ColumnType.TIMESTAMP =>
-            row.setField(idx, Try(dateFormat.parse(colValue)).getOrElse(if (useDefaults) new Date(0) else null))
-          case ColumnType.BOOLEAN =>
-            row.setField(idx, Try(colValue.toBoolean).getOrElse(if (useDefaults) false else null))
-        }
+  private def convert(value: String, convertor: String => Any, default: Any): Any = {
+    value match {
+      case numformat() => convertor(value)
+      case _ => default
     }
-    row
   }
 
+  def parser(cols: Seq[Column], useDefaults: Boolean): Array[String] => Row = {
+    val defNum: Any = if (useDefaults) defaultNum else null
+    val defBool: Any = if (useDefaults) false else null
+    val defDate = if (useDefaults) defaultDate else null
+    val idxCol = cols.zipWithIndex
 
-  private def getFieldValue(elem: Object, isNumeric: Boolean): String = {
-    val mayBeString: Try[String] = Try(elem.toString.trim)
-    mayBeString match {
-      case Success(s) if isNumeric && s.equalsIgnoreCase("NA") => null
-      case Success(s) => s
-      case Failure(e) => null
+    {
+      rowArray: Array[String] =>
+        val ra = idxCol map {
+          case (col, idx) =>
+            val cval = rowArray(idx)
+            col.getType match {
+              case ColumnType.STRING => cval
+              case ColumnType.INT => convert(cval, _.toInt, defNum)
+              case ColumnType.FLOAT => convert(cval, _.toFloat, defNum)
+              case ColumnType.DOUBLE => convert(cval, _.toDouble, defNum)
+              case ColumnType.BIGINT => convert(cval, _.toDouble, defNum)
+              case ColumnType.TIMESTAMP => Try(dateFormat.parse(cval)).getOrElse(defDate)
+              case ColumnType.BOOLEAN => Try(cval.toBoolean).getOrElse(defBool)
+            }
+        }
+        new Row(ra.toArray)
     }
   }
 }

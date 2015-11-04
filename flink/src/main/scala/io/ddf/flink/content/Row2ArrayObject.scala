@@ -17,6 +17,7 @@ class Row2ArrayObject(@transient ddf: DDF) extends ConvertFunction(ddf) {
             val rowDataSet = dataSet.asInstanceOf[DataSet[Row]]
             val columnSize = ddf.getColumnNames.length - 1
             val arrDataSet: DataSet[Array[Object]] = rowDataSet.map(_.elementArray).asInstanceOf[DataSet[Array[Object]]]
+            println(s"I WAS CALLED")
             new Representation(arrDataSet, RepresentationHandler.DATASET_ARR_OBJECT.getTypeSpecsString)
         }
     }

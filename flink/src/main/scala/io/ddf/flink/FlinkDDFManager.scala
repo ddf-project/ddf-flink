@@ -7,7 +7,7 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkConstants._
-import io.ddf.flink.content.{RowParser, RepresentationHandler}
+import io.ddf.flink.content.{Column2RowTypeInfo, RowParser, RepresentationHandler}
 import io.ddf.flink.utils.Utils
 import io.ddf.misc.Config
 import io.ddf.{DDF, DDFManager}
@@ -35,14 +35,15 @@ class FlinkDDFManager extends DDFManager {
 
     val subset = fileData.first(sampleSize).collect()
     val columns: Array[Column] = getColumnInfo(subset,fieldSeparator)
+    implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo (columns)
 
-    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
+    val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
     val rand: SecureRandom = new SecureRandom
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
 
     val schema: Schema = new Schema(tableName, columns)
-    val data: DataSet[Row] = fileData.map(_.split(fieldSeparator)).asInstanceOf[DataSet[Array[Object]]]
-      .map(ra => RowParser.parseRow(ra, columns.toList.zipWithIndex, useDefaults = false))
+    val parser = RowParser.parser(columns, useDefaults = false)
+    val data: DataSet[Row] = fileData.map(_.split(fieldSeparator)).map(r => parser(r))
 
     val ddf = this.newDDF(data, typeSpecs, getEngine, getNamespace, tableName, schema)
     this.addDDF(ddf)

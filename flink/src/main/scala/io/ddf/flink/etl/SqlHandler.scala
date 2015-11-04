@@ -35,9 +35,10 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     val path = new Path(l.url)
     val csvInputFormat = new StringArrayCsvInputFormat(path, l.delimiter, emptyValue = l.emptyValue, nullValue = l.nullValue)
 
-    val dataSet: DataSet[Row] = env.readFile(csvInputFormat, l.url)
-      .asInstanceOf[DataSet[Array[Object]]]
-      .map(ra => RowParser.parseRow(ra, ddf.getSchema.getColumns.toList.zipWithIndex, l.useDefaults))
+    implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo (ddf.getSchema.getColumns)
+
+    val rowParser = RowParser.parser(ddf.getSchema.getColumns.toList, l.useDefaults)
+    val dataSet: DataSet[Row] = env.readFile(csvInputFormat, l.url).map(ra => rowParser(ra))
 
     ddf.getRepresentationHandler.set(dataSet, dsrTypeSpecs: _*)
     ddf
