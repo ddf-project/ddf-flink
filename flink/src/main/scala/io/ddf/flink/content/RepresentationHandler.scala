@@ -60,8 +60,8 @@ object RepresentationHandler {
   def getRowDataSet(dataSet: DataSet[Array[Object]], columns: List[Column]): DataSet[Row] = {
     val dsType = dataSet.getType()
     val idxColumns: Seq[(Column, Int)] = columns.zipWithIndex.toSeq
-    implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo (columns)
-    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Any]]].map (a => new Row (a) )
+    implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo(columns)
+    val rowDataSet = dataSet.asInstanceOf[DataSet[Array[Any]]].map(a => new Row(a))
     rowDataSet
 
   }
@@ -71,13 +71,43 @@ object RowParser extends Serializable {
 
   private val dateFormat = new SimpleDateFormat()
   private val numformat = "[\\+\\-0-9.e]+".r
+  private val intformat = "[\\+\\-0-9]+".r
   private val defaultNum = 0
   private val defaultDate = new Date(0)
 
-  private def convert(value: String, convertor: String => Any, default: Any): Any = {
+  private def convertToInt(value: String, default: Any): Any = {
     value match {
-      case numformat() => convertor(value)
+      case intformat() => value.toInt
+      case numformat() => value.toFloat.toInt
       case _ => default
+    }
+  }
+
+
+  private def convertToFloat(value: String, default: Any): Any = {
+    value match {
+      case numformat() => value.toFloat
+      case _ => default
+    }
+  }
+
+
+  private def convertToDouble(value: String, default: Any): Any = {
+    value match {
+      case numformat() => value.toFloat.toInt
+      case _ => default
+    }
+  }
+
+  private def convertToBoolean(value: String, default: Any): Any = {
+    if (value != null) {
+      value.toLowerCase match {
+        case "true" => true
+        case "false" => false
+        case _ => default
+      }
+    } else {
+      default
     }
   }
 
@@ -94,12 +124,12 @@ object RowParser extends Serializable {
             val cval = rowArray(idx)
             col.getType match {
               case ColumnType.STRING => cval
-              case ColumnType.INT => convert(cval, _.toInt, defNum)
-              case ColumnType.FLOAT => convert(cval, _.toFloat, defNum)
-              case ColumnType.DOUBLE => convert(cval, _.toDouble, defNum)
-              case ColumnType.BIGINT => convert(cval, _.toDouble, defNum)
+              case ColumnType.INT => convertToInt(cval, defNum)
+              case ColumnType.FLOAT => convertToFloat(cval, defNum)
+              case ColumnType.DOUBLE => convertToDouble(cval, defNum)
+              case ColumnType.BIGINT => convertToDouble(cval, defNum)
               case ColumnType.TIMESTAMP => Try(dateFormat.parse(cval)).getOrElse(defDate)
-              case ColumnType.BOOLEAN => Try(cval.toBoolean).getOrElse(defBool)
+              case ColumnType.BOOLEAN => convertToBoolean(cval, defBool)
             }
         }
         new Row(ra.toArray)
