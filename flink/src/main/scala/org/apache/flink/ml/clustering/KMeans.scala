@@ -263,24 +263,19 @@ object KMeans {
     *         feature vector
     */
   implicit def predictVectors[T <: Vector] = {
-    new PredictOperation[KMeans, Seq[LabeledVector], T, Double](){
+    new PredictOperation[KMeans, T, Double]() {
 
-      override def getModel(
-                             self: KMeans,
-                             predictParameters: ParameterMap)
-      : DataSet[Seq[LabeledVector]] = {
-
+      override def predict(self: KMeans, predictParameters: ParameterMap, input: DataSet[T]): DataSet[Double] = {
         self.centroids match {
-          case Some(model) => model
-          case None => {
-            throw new RuntimeException("The KMeans model has not been trained. Call first fit" +
-              "before calling the predict operation.")
-          }
+          case Some(c) =>
+            val model = c.collect().flatten
+            input.map {
+              value =>
+                findNearestCentroid(value, model)._1
+            }
+          case None =>
+            throw new RuntimeException("The KMeans model has not been trained. Call fit before calling the predict operation.")
         }
-      }
-
-      override def predict(value: T, model: Seq[LabeledVector]): Double = {
-        findNearestCentroid(value, model)._1
       }
     }
   }

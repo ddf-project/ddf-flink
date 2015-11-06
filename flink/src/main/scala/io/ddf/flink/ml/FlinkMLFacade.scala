@@ -54,9 +54,7 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
           localIterations: Option[Int] = None,
           regularization: Option[Double] = None,
           stepsize: Option[Double] = None,
-          seed: Option[Long] = None,
-          thresholdValue: Option[Double] = None,
-          outputDecisionFn: Option[Boolean] = None): IModel = {
+          seed: Option[Long] = None): IModel = {
 
     import org.apache.flink.ml.classification.SVM
 
@@ -68,8 +66,7 @@ class FlinkMLFacade(ddf: DDF, mlSupporter: ISupportML) extends MLFacade(ddf, mlS
       localIterations.map(li => pmap.add(SVM.LocalIterations, li))
       regularization.map(r => pmap.add(SVM.Regularization, r))
       stepsize.map(ss => pmap.add(SVM.Stepsize, ss))
-      thresholdValue.map(tv => pmap.add(SVM.ThresholdValue, tv))
-      outputDecisionFn.map(odf => pmap.add(SVM.OutputDecisionFunction, odf))
+      seed.map(s => pmap.add(SVM.Seed, s))
 
       pmap
     }
