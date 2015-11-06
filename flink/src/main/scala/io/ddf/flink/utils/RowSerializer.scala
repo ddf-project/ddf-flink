@@ -137,8 +137,4 @@ class RowSerializer(fieldSerializers: Array[TypeSerializer[Any]])
       case _ => false
     }
   }
-
-  override def canEqual(o: scala.Any): Boolean = false
-
-  override def hashCode(): Int = 1
 }
