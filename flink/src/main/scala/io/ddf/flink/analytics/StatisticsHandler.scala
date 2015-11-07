@@ -45,12 +45,33 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
   override protected def getSummaryImpl: Array[Summary] = {
     val data: DataSet[Row] = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
-    val summarizer = new AbstractID().toString
-    data.flatMap(new SummaryAccumulatorHelper(summarizer, ddf.getSchema.getNumColumns)).output(new DiscardingOutputFormat[Summary]())
+    val columnNum = ddf.getSchema.getNumColumns
+    val summaryDataset: DataSet[Array[Summary]] = data.mapPartition {
+      rows =>
+        val summaries = 0 to columnNum map(x => new Summary())
+        rows.foreach {
+          row =>
+            (summaries, row.elementArray).zipped.map {
+              case (summary, colValue: Int) if !isNull(colValue) =>
+                summary.merge(colValue)
+              case (summary, colValue: Long) if !isNull(colValue) =>
+                summary.merge(colValue)
+              case (summary, colValue: Float) if !isNull(colValue) =>
+                summary.merge(colValue)
+              case (summary, colValue: Double) if !isNull(colValue) =>
+                summary.merge(colValue)
+              case (td, _) =>
+            }
+        }
+        Seq(summaries)
+    }.reduce {
+      (summary1, summary2) => (summary1, summary2).zipped.map {
+        (x, y) =>
+          x.merge(y)
+      }
+    }.map(_.toArray)
 
-    val env = ddf.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
-    val result = env.execute(s"Sumarizer[${ddf.getName}]")
-    result.getAccumulatorResult[Array[Summary]](summarizer)
+    summaryDataset.first(1).collect().head
   }
 
   override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = {
@@ -59,7 +80,7 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
     val tDigestDataset: DataSet[Array[TDigest]] = data.mapPartition {
       rows =>
-        val tDigest = (0 to columnNames.size()).map(x => new TDigest(100)).toArray
+        val tDigest = (0 to columnNames.size()-1).map(x => new TDigest(100)).toArray
         rows.foreach {
           row =>
             (tDigest, row.elementArray).zipped.map {
