@@ -2,7 +2,6 @@ package io.ddf.flink.utils
 
 import java.util
 
-import io.ddf.flink.RowCacheInputFormat
 import it.unimi.dsi.fastutil.objects.ObjectBigArrayBigList
 import org.apache.flink.api.common.accumulators.SerializedListAccumulator
 import org.apache.flink.api.java.Utils.{CollectHelper, CountHelper}
@@ -11,12 +10,15 @@ import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment}
 import org.apache.flink.api.table.Row
 import org.apache.flink.api.table.typeinfo.RowTypeInfo
 import org.apache.flink.util.AbstractID
+import org.apache.flink.api.scala._
 
 import scala.collection.JavaConverters._
 
 object RowCacheHelper {
 
   def reloadRowsFromCache(flinkExecutionEnvironment: ExecutionEnvironment,fileURL: String, rowTypeInfo: RowTypeInfo, rdata: DataSet[Row]): DataSet[Row] = {
+    implicit val ti: RowTypeInfo = rowTypeInfo
+
     val counter = new AbstractID().toString
     val collector = new AbstractID().toString
 
