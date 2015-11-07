@@ -7,8 +7,8 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkConstants._
-import io.ddf.flink.content.{Column2RowTypeInfo, RowParser, RepresentationHandler}
-import io.ddf.flink.utils.Utils
+import io.ddf.flink.content.{Column2RowTypeInfo, RowParser}
+import io.ddf.flink.utils.{DemoSupport, RowCacheHelper, Utils}
 import io.ddf.misc.Config
 import io.ddf.{DDF, DDFManager}
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
@@ -43,7 +43,13 @@ class FlinkDDFManager extends DDFManager {
 
     val schema: Schema = new Schema(tableName, columns)
     val parser = RowParser.parser(columns, useDefaults = false)
-    val data: DataSet[Row] = fileData.map(_.split(fieldSeparator)).map(r => parser(r))
+    val rdata: DataSet[Row] = fileData.map(_.split(fieldSeparator)).map(r => parser(r))
+
+    val data: DataSet[Row] = if (DemoSupport.isDemoMode) {
+      RowCacheHelper.reloadRowsFromCache(flinkExecutionEnvironment, fileURL, rowTypeInfo, rdata)
+    } else {
+      rdata
+    }
 
     val ddf = this.newDDF(data, typeSpecs, getEngine, getNamespace, tableName, schema)
     this.addDDF(ddf)
