@@ -1,6 +1,7 @@
 package io.ddf.flink.analytics
 
 import java.{lang, util}
+import javax.print.attribute.standard.Compression
 
 import com.clearspring.analytics.stream.quantile.TDigest
 import io.ddf.DDF
@@ -54,30 +55,36 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
   override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = {
     val percentiles: Array[java.lang.Double] = Array(0.00001, 0.99999, 0.25, 0.5, 0.75)
-    val data = ddf.getRepresentationHandler.get(DATASET_ARR_OBJ_TYPE_SPECS: _*).asInstanceOf[DataSet[Array[Object]]]
+    val data = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
+
     val tDigestDataset: DataSet[Array[TDigest]] = data.mapPartition {
       rows =>
-        rows.map {
+        val tDigest = (0 to columnNames.size()).map(x => new TDigest(100)).toArray
+        rows.foreach {
           row =>
-            row.map { colValue =>
-              val tDigest = new TDigest(100)
-              if (!isNull(colValue)) {
-                tDigest.add(colValue.toString.toDouble)
-              }
-              tDigest
+            (tDigest, row.elementArray).zipped.map {
+              case (td, colValue: Int) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, colValue: Float) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, colValue: Double) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, _) =>
             }
         }
+        Seq(tDigest)
     }.reduce {
       (td1, td2) => (td1, td2).zipped.map {
         (x, y) =>
-          x.add(y)
+          if(y.size() > 0) x.add(y)
           x
       }
     }
+
     val tdigests = tDigestDataset.first(1).collect().head
     tdigests.map {
       td =>
-        val quantiles = percentiles.map(p => td.quantile(p))
+        val quantiles = percentiles.map(p => if(td.size() > 0) td.quantile(p) else Double.NaN)
         new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
     }
   }
@@ -242,6 +249,50 @@ class SummaryAccumulator(cols: Int) extends Accumulator[Row, Array[Summary]] {
         }
       case (s, entry) if(isNull(entry)) =>
         //DO NOTHING
+    }
+  }
+}
+
+
+class TDigestHelper(id: String, cols: Int, compression: Int) extends RichFlatMapFunction[Row, Summary] {
+  private var digestAccumulator: TDigestAccumulator = null
+
+  override def open(parameters: Configuration): Unit = {
+    digestAccumulator = new TDigestAccumulator(cols, compression)
+    getRuntimeContext.addAccumulator(id, digestAccumulator)
+  }
+
+  override def flatMap(in: Row, collector: Collector[Summary]): Unit = {
+    digestAccumulator.add(in)
+  }
+}
+
+class TDigestAccumulator(cols: Int, compression: Int) extends Accumulator[Row, Array[TDigest]] {
+  private var digests: Array[TDigest] = (0 to cols).map(x => new TDigest(compression)).toArray
+  override def getLocalValue: Array[TDigest] = digests
+
+  override def resetLocal(): Unit = {
+    digests = (0 to cols).map(x => new TDigest(compression)).toArray
+  }
+
+  override def merge(other: Accumulator[Row, Array[TDigest]]): Unit = {
+    (digests, other.getLocalValue).zipped.map{
+      case (t1, t2) => if(t2.size() > 0) t1.add(t2)
+    }
+  }
+
+  override def add(row: Row): Unit = {
+    (digests, row.elementArray).zipped.map {
+      case (td, element: Int) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Long) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Float) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Double) if !isNull(element) =>
+        td.add(element)
+      case (td, _) =>
+        //Do Nothing
     }
   }
 }
