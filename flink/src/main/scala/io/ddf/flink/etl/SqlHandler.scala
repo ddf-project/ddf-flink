@@ -11,7 +11,7 @@ import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.content.SqlSupport._
 import io.ddf.flink.content.{RowParser, Column2RowTypeInfo, RepresentationHandler}
 import io.ddf.flink.utils.Misc._
-import io.ddf.flink.utils.{Joins, Sorts, StringArrayCsvInputFormat}
+import io.ddf.flink.utils._
 import io.ddf.{DDF, DDFManager, TableNameReplacer}
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.scala.{DataSet, _}
@@ -38,7 +38,13 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo (ddf.getSchema.getColumns)
 
     val rowParser = RowParser.parser(ddf.getSchema.getColumns.toList, l.useDefaults)
-    val dataSet: DataSet[Row] = env.readFile(csvInputFormat, l.url).map(ra => rowParser(ra))
+    val rdataSet: DataSet[Row] = env.readFile(csvInputFormat, l.url).map(ra => rowParser(ra))
+
+    val dataSet = if (DemoSupport.isDemoMode) {
+      RowCacheHelper.reloadRowsFromCache(env, s"ddf-table://${l.tableName}", rowTypeInfo, rdataSet)
+    } else {
+      rdataSet
+    }
 
     ddf.getRepresentationHandler.set(dataSet, dsrTypeSpecs: _*)
     ddf
