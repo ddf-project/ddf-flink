@@ -1,6 +1,7 @@
 package io.ddf.flink.analytics
 
 import java.{lang, util}
+import javax.print.attribute.standard.Compression
 
 import com.clearspring.analytics.stream.quantile.TDigest
 import io.ddf.DDF
@@ -13,9 +14,15 @@ import io.ddf.flink.FlinkDDFManager
 import io.ddf.flink.content.RepresentationHandler._
 import io.ddf.flink.utils.Misc
 import io.ddf.flink.utils.Misc._
+import org.apache.flink.api.common.accumulators.{Accumulator, SimpleAccumulator}
+import org.apache.flink.api.common.functions.RichFlatMapFunction
+import org.apache.flink.api.java.io.DiscardingOutputFormat
 import org.apache.flink.api.scala.table._
 import org.apache.flink.api.scala.{DataSet, _}
+import org.apache.flink.api.table.expressions.IsNull
 import org.apache.flink.api.table.{Row, Table}
+import org.apache.flink.configuration.Configuration
+import org.apache.flink.util.{AbstractID, Collector}
 
 import scala.collection.JavaConversions._
 import scala.util.{Failure, Success, Try}
@@ -37,52 +44,49 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   private def getDoubleColumn(columnName: String): Option[DataSet[Double]] = Misc.getDoubleColumn(ddf, columnName)
 
   override protected def getSummaryImpl: Array[Summary] = {
-    val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(DATASET_ARR_OBJ_TYPE_SPECS: _*).asInstanceOf[DataSet[Array[Object]]]
-    val result = data.map {
-      row =>
-        row.map {
-          entry =>
-            val summary = new Summary()
-            if (!isNull(entry)) {
-              val mayBeDouble = Try(entry.toString.toDouble)
-              mayBeDouble match {
-                case Success(number) =>
-                  summary.merge(entry.toString.toDouble)
-                case Failure(other) =>
-                  //if value is na increase countNA else ignore
-                  if (entry.toString.equalsIgnoreCase("NA")) {
-                    summary.addToNACount(1)
-                  }
-              }
-            }
-            summary
-        }
-    }.reduce {
-      (x, y) =>
-        (x, y).zipped.map((xColSummary, yColSummary) => xColSummary.merge(yColSummary))
-    }
-    result.collect().head
-  }
+    val data: DataSet[Row] = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
+    val summarizer = new AbstractID().toString
+    data.flatMap(new SummaryAccumulatorHelper(summarizer, ddf.getSchema.getNumColumns)).output(new DiscardingOutputFormat[Summary]())
 
-  private def getNumericColumns(columnNames: util.List[String]): util.List[String] = {
-    columnNames.filter(col => this.getDDF.getColumn(col).isNumeric)
+    val env = ddf.getManager.asInstanceOf[FlinkDDFManager].getExecutionEnvironment
+    val result = env.execute(s"Sumarizer[${ddf.getName}]")
+    result.getAccumulatorResult[Array[Summary]](summarizer)
   }
 
   override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = {
-    val percentiles: Array[java.lang.Double] = Array(0.0001, 0.25, 0.5001, 0.75, .9999)
+    val percentiles: Array[java.lang.Double] = Array(0.00001, 0.99999, 0.25, 0.5, 0.75)
+    val data = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
 
-    val numericColNames = this.getNumericColumns(columnNames)
-    columnNames.map { columnName =>
-      if (numericColNames.contains(columnName)) {
-        val quantiles = getVectorQuantiles(columnName, percentiles)
-        // scalastyle:off magic.number
-        new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
-        // scalastyle:on magic.number
-      } else {
-        new FiveNumSummary(Double.NaN, Double.NaN, Double.NaN, Double.NaN,
-          Double.NaN)
+    val tDigestDataset: DataSet[Array[TDigest]] = data.mapPartition {
+      rows =>
+        val tDigest = (0 to columnNames.size()).map(x => new TDigest(100)).toArray
+        rows.foreach {
+          row =>
+            (tDigest, row.elementArray).zipped.map {
+              case (td, colValue: Int) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, colValue: Float) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, colValue: Double) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, _) =>
+            }
+        }
+        Seq(tDigest)
+    }.reduce {
+      (td1, td2) => (td1, td2).zipped.map {
+        (x, y) =>
+          if(y.size() > 0) x.add(y)
+          x
       }
-    }.toArray
+    }
+
+   val tdigests = tDigestDataset.first(1).collect().head
+    tdigests.map {
+      td =>
+        val quantiles = percentiles.map(p => if(td.size() > 0) td.quantile(p) else Double.NaN)
+        new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
+    }
   }
 
   override def getVectorVariance(columnName: String): Array[lang.Double] = {
@@ -118,28 +122,24 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
   private def getTDigest(columnName: String): TDigest = {
-    val maybeDataSet: Option[DataSet[Double]] = getDoubleColumn(columnName)
-
-    maybeDataSet.map {
-      ds =>
-        val digests = ds.map {
-          x =>
-            val rs = new TDigest(100)
-            rs.add(x)
-            rs
-        }.reduce {
-          (x, y) => x.add(y)
-            x
+    val table = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
+    val columnData: DataSet[Row] = table.select(columnName).where(s"$columnName.isNotNull")
+    val result = columnData.map {
+      row =>
+        val columnValue = row.productElement(0)
+        val rs = new TDigest(100)
+        if (!isNull(columnValue)) {
+          rs.add(columnValue.toString.toDouble)
         }
-        val reducedList: util.List[TDigest] = digests.collect()
-        val finalDigest = reducedList.reduce {
-          (x, y) =>
-            x.add(y)
-            x
-        }
-        finalDigest
-    }.orNull
+        rs
+    }.reduce {
+      (x, y) =>
+        x.add(y)
+        x
+    }.collect().head
+    result
   }
+
 
   override def getVectorQuantiles(columnName: String, percentiles: Array[lang.Double]): Array[lang.Double] = {
     val column = ddf.getColumn(columnName)
@@ -191,7 +191,9 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
   private def getMinAndMaxValue(data: DataSet[Array[Object]], columnIndex: Int): (Double, Double) = {
     val defaultValue = (Double.NaN, Double.NaN)
-    val notNullValues: DataSet[Array[Object]] = data.filter { d => !isNull(d(columnIndex)) }
+    val notNullValues: DataSet[Array[Object]] = data.filter {
+      d => !isNull(d(columnIndex))
+    }
     val tupleDataset = notNullValues.map {
       d =>
         val numericValue = d(columnIndex).toString.toDouble
@@ -203,5 +205,94 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
 }
 
+class SummaryAccumulatorHelper(id: String, cols: Int) extends RichFlatMapFunction[Row, Summary] {
+  private var summaryAccumulator: SummaryAccumulator = null
+
+  override def open(parameters: Configuration): Unit = {
+    summaryAccumulator = new SummaryAccumulator(cols)
+    getRuntimeContext.addAccumulator(id, summaryAccumulator)
+  }
+
+  override def flatMap(in: Row, collector: Collector[Summary]): Unit = {
+    summaryAccumulator.add(in)
+  }
+}
+
+class SummaryAccumulator(cols: Int) extends Accumulator[Row, Array[Summary]] {
+  private var summary: Array[Summary] = (1 to cols).map(x => new Summary()).toArray
+
+  override def getLocalValue: Array[Summary] = summary
+
+  override def resetLocal(): Unit = {
+    summary = (1 to cols).map(x => new Summary()).toArray
+  }
+
+  override def merge(other: Accumulator[Row, Array[Summary]]): Unit = {
+    this.summary = (this.summary, other.getLocalValue).zipped.map((r1col, r2col) => r1col.merge(r2col))
+  }
+
+  override def add(row: Row): Unit = {
+    (this.summary, row.elementArray).zipped.foreach {
+      case (s, entry) if !isNull(entry) =>
+        entry match {
+          case d: Double =>
+            s.merge(d)
+          case i: Int =>
+            s.merge(i)
+          case f: Float =>
+            s.merge(f)
+          case _ =>
+            //if value is na increase countNA else ignore
+            if (entry.toString.equalsIgnoreCase("NA")) {
+              s.addToNACount(1)
+            }
+        }
+      case (s, entry) if(isNull(entry)) =>
+        //DO NOTHING
+    }
+  }
+}
 
 
+class TDigestHelper(id: String, cols: Int, compression: Int) extends RichFlatMapFunction[Row, Summary] {
+  private var digestAccumulator: TDigestAccumulator = null
+
+  override def open(parameters: Configuration): Unit = {
+    digestAccumulator = new TDigestAccumulator(cols, compression)
+    getRuntimeContext.addAccumulator(id, digestAccumulator)
+  }
+
+  override def flatMap(in: Row, collector: Collector[Summary]): Unit = {
+    digestAccumulator.add(in)
+  }
+}
+
+class TDigestAccumulator(cols: Int, compression: Int) extends Accumulator[Row, Array[TDigest]] {
+  private var digests: Array[TDigest] = (0 to cols).map(x => new TDigest(compression)).toArray
+  override def getLocalValue: Array[TDigest] = digests
+
+  override def resetLocal(): Unit = {
+    digests = (0 to cols).map(x => new TDigest(compression)).toArray
+  }
+
+  override def merge(other: Accumulator[Row, Array[TDigest]]): Unit = {
+    (digests, other.getLocalValue).zipped.map{
+      case (t1, t2) => if(t2.size() > 0) t1.add(t2)
+    }
+  }
+
+  override def add(row: Row): Unit = {
+    (digests, row.elementArray).zipped.map {
+      case (td, element: Int) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Long) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Float) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Double) if !isNull(element) =>
+        td.add(element)
+      case (td, _) =>
+        //Do Nothing
+    }
+  }
+}

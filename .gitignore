@@ -45,3 +45,5 @@ R.Rproj
 
 # python stuffs
 *.pyc
+*.bak
+

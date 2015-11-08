@@ -8,8 +8,8 @@ import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.exception.DDFException
 import io.ddf.flink.FlinkConstants._
-import io.ddf.flink.content.RepresentationHandler
-import io.ddf.flink.utils.Utils
+import io.ddf.flink.content.{Column2RowTypeInfo, RowParser}
+import io.ddf.flink.utils.{DemoSupport, RowCacheHelper, Utils}
 import io.ddf.misc.Config
 import io.ddf.{DDF, DDFManager}
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
@@ -29,32 +29,40 @@ class FlinkDDFManager extends DDFManager {
   override def getNamespace: String = NAMESPACE
 
   override def loadTable(fileURL: String, fieldSeparator: String): DDF = {
-    val fileData: DataSet[Array[Object]] = flinkExecutionEnvironment
-      .readTextFile(fileURL)
-      .map(_.split(fieldSeparator).map(_.asInstanceOf[Object]))
+
+    val fileData: DataSet[String] = flinkExecutionEnvironment.readTextFile(fileURL)
 
     // scalastyle:off magic.number
     val sampleSize = 5
     // scalastyle:on magic.number
 
-    val subset = fileData.first(sampleSize).map(_.map(_.toString)).collect()
-    val columns: Array[Column] = getColumnInfo(subset)
+    val subset = fileData.first(sampleSize).collect()
+    val columns: Array[Column] = getColumnInfo(subset,fieldSeparator)
+    implicit val rowTypeInfo = Column2RowTypeInfo.getRowTypeInfo (columns)
 
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
     val rand: SecureRandom = new SecureRandom
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
 
     val schema: Schema = new Schema(tableName, columns)
-    val rowDS = RepresentationHandler.getRowDataSet(fileData, columns.toList, useDefaults = false)
+    val parser = RowParser.parser(columns, useDefaults = false)
+    val rdata: DataSet[Row] = fileData.map(_.split(fieldSeparator)).map(r => parser(r))
 
-    val ddf = this.newDDF(rowDS, typeSpecs, getNamespace, tableName, schema)
+    val data: DataSet[Row] = if (DemoSupport.isDemoMode) {
+      RowCacheHelper.reloadRowsFromCache(flinkExecutionEnvironment, fileURL, rowTypeInfo, rdata)
+    } else {
+      rdata
+    }
+
+    val ddf = this.newDDF(data, typeSpecs, getNamespace, tableName, schema)
     this.addDDF(ddf)
     ddf
   }
 
   def getExecutionEnvironment: ExecutionEnvironment = flinkExecutionEnvironment
 
-  def getColumnInfo(sampleData: Seq[Array[String]],
+  def getColumnInfo(sampleData: Seq[String],
+                    fieldSeparator:String,
                     hasHeader: Boolean = false,
                     doPreferDouble: Boolean = true): Array[Schema.Column] = {
 
@@ -66,7 +74,7 @@ class FlinkDDFManager extends DDFManager {
     //      return null
     //    }
 
-    val firstRow: Array[String] = sampleData.head
+    val firstRow: Array[String] = sampleData.head.split(fieldSeparator)
 
     val headers: Seq[String] = if (hasHeader) {
       firstRow.toSeq
@@ -77,7 +85,7 @@ class FlinkDDFManager extends DDFManager {
 
     val sampleStrings = if (hasHeader) sampleData.tail else sampleData
 
-    val samples = sampleStrings.toArray.transpose
+    val samples = sampleStrings.map(_.split(fieldSeparator)).toArray.transpose
 
     samples.zipWithIndex.map {
       case (col, i) => new Schema.Column(headers(i), Utils.determineType(col, doPreferDouble, false))
