@@ -78,6 +78,8 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
             (tDigests, row.elementArray).zipped.map {
               case (td, colValue: Int) if !isNull(colValue) =>
                 td.add(colValue)
+              case (td, colValue: Long) if !isNull(colValue) =>
+                td.add(colValue)
               case (td, colValue: Float) if !isNull(colValue) =>
                 td.add(colValue)
               case (td, colValue: Double) if !isNull(colValue) =>
