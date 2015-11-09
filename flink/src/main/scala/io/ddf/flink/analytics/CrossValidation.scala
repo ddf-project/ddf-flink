@@ -96,7 +96,7 @@ object CrossValidation {
     if (isNull(splits)) {
       throw new DDFException("Error getting cross validation for DDF")
     }
-    getDDFCVSetsFromDataSets(splits, ddf.getManager, ddf.getSchema, ddf.getNamespace, unitType)
+    getDDFCVSetsFromDataSets(splits, ddf.getManager, ddf.getSchema, unitType)
   }
 
   def DDFKFoldSplit(ddf: DDF, numSplits: Int, seed: Long): JList[CrossValidationSet] = {
@@ -128,7 +128,7 @@ object CrossValidation {
     if (isNull(splits)) {
       throw new DDFException("Error getting cross validation for DDF")
     }
-    getDDFCVSetsFromDataSets(splits, ddf.getManager, ddf.getSchema, ddf.getNamespace, unitType)
+    getDDFCVSetsFromDataSets(splits, ddf.getManager, ddf.getSchema, unitType)
   }
 
   /**
@@ -140,7 +140,6 @@ object CrossValidation {
   private def getDDFCVSetsFromDataSets(splits: Iterator[(DataSet[_], DataSet[_])],
                                        manager: DDFManager,
                                        schema: Schema,
-                                       nameSpace: String,
                                        unitType: Class[_]):
   JList[CrossValidationSet] = {
     // val cvSets: JList[JList[DDF]] = new util.ArrayList[JList[DDF]]()
@@ -152,10 +151,10 @@ object CrossValidation {
       val trainSchema = new Schema(null, schema.getColumns)
 
       val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], unitType)
-      val trainDDF = manager.newDDF(manager, train, typeSpecs, nameSpace, trainSchema.getTableName, trainSchema)
+      val trainDDF = manager.newDDF(manager, train, typeSpecs, trainSchema.getTableName, trainSchema)
 
       val testSchema = new Schema(null, schema.getColumns)
-      val testDDF = manager.newDDF(manager, test, typeSpecs, nameSpace, testSchema.getTableName, testSchema)
+      val testDDF = manager.newDDF(manager, test, typeSpecs, testSchema.getTableName, testSchema)
 
       cvSets.add(new CrossValidationSet(trainDDF, testDDF))
     }

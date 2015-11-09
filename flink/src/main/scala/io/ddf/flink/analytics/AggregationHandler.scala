@@ -89,8 +89,7 @@ class AggregationHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     val generatedSchema = new Schema(tableName, columns)
     val typeSpecs: Array[Class[_]] = Array(classOf[Table])
     val manager: DDFManager = ddf.getManager
-    val resultDDF: DDF = manager.newDDF(table, typeSpecs, ddf
-      .getNamespace, tableName, generatedSchema)
+    val resultDDF: DDF = manager.newDDF(table, typeSpecs, tableName, generatedSchema)
     resultDDF
   }
 
