@@ -17,7 +17,7 @@ fork in Test := true
 
 parallelExecution in ThisBuild := false
 
-javaOptions in Test ++= Seq("-Xmx2g")
+javaOptions in Test ++= Seq("-Xmx8g")
 
 concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)
 

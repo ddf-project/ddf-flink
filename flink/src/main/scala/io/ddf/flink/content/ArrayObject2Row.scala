@@ -14,7 +14,7 @@ class ArrayObject2Row(@transient ddf: DDF) extends ConvertFunction(ddf) {
   override def apply(rep: Representation): Representation = {
     val repValue: AnyRef = rep.getValue
     repValue match {
-      case dataSet: DataSet[_] =>
+      case dataSet: DataSet[Array[Object]] =>
         dataSet.getType() match {
           case x: ObjectArrayTypeInfo[_, _] =>
             val columns: List[Column] = ddf.getSchema.getColumns.toList

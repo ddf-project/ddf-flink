@@ -18,7 +18,6 @@ import org.apache.flink.api.scala.{DataSet, _}
 import org.apache.flink.api.table.{Row, Table}
 
 import scala.collection.JavaConversions._
-import scala.util.{Failure, Success, Try}
 
 class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
@@ -37,59 +36,70 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   private def getDoubleColumn(columnName: String): Option[DataSet[Double]] = Misc.getDoubleColumn(ddf, columnName)
 
   override protected def getSummaryImpl: Array[Summary] = {
-    val data: DataSet[Array[Object]] = ddf.getRepresentationHandler.get(DATASET_ARR_OBJ_TYPE_SPECS: _*).asInstanceOf[DataSet[Array[Object]]]
-    val result = data.map {
-      row =>
-        row.map {
-          entry =>
-            val summary = new Summary()
-            if (!isNull(entry)) {
-              val mayBeDouble = Try(entry.toString.toDouble)
-              mayBeDouble match {
-                case Success(number) =>
-                  summary.merge(entry.toString.toDouble)
-                case Failure(other) =>
-                  //if value is na increase countNA else ignore
-                  if (entry.toString.equalsIgnoreCase("NA")) {
-                    summary.addToNACount(1)
-                  }
-              }
+    val data: DataSet[Row] = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
+    val columnNum = ddf.getSchema.getNumColumns
+    val summaryDataset: DataSet[Array[Summary]] = data.mapPartition {
+      rows =>
+        val summaries = 0 to columnNum map (x => new Summary())
+        rows.foreach {
+          row =>
+            (summaries, row.elementArray).zipped.map {
+              case (summary, colValue: Int) if !isNull(colValue) =>
+                summary.merge(colValue)
+              case (summary, colValue: Long) if !isNull(colValue) =>
+                summary.merge(colValue)
+              case (summary, colValue: Float) if !isNull(colValue) =>
+                summary.merge(colValue)
+              case (summary, colValue: Double) if !isNull(colValue) =>
+                summary.merge(colValue)
+              case (td, _) =>
             }
-            summary
         }
+        Seq(summaries)
     }.reduce {
-      (x, y) =>
-        (x, y).zipped.map((xColSummary, yColSummary) => xColSummary.merge(yColSummary))
-    }
-    result.collect().head
+      (summary1, summary2) => (summary1, summary2).zipped.map {
+        (x, y) =>
+          x.merge(y)
+      }
+    }.map(_.toArray)
+
+    summaryDataset.first(1).collect().head
   }
 
   override def getFiveNumSummary(columnNames: util.List[String]): Array[FiveNumSummary] = {
     val percentiles: Array[java.lang.Double] = Array(0.00001, 0.99999, 0.25, 0.5, 0.75)
-    val data = ddf.getRepresentationHandler.get(DATASET_ARR_OBJ_TYPE_SPECS: _*).asInstanceOf[DataSet[Array[Object]]]
+    val data = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
+
     val tDigestDataset: DataSet[Array[TDigest]] = data.mapPartition {
       rows =>
-        rows.map {
+        val tDigests = (0 to columnNames.size() - 1).map(x => new TDigest(100)).toArray
+        rows.foreach {
           row =>
-            row.map { colValue =>
-              val tDigest = new TDigest(100)
-              if (!isNull(colValue)) {
-                tDigest.add(colValue.toString.toDouble)
-              }
-              tDigest
+            (tDigests, row.elementArray).zipped.map {
+              case (td, colValue: Int) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, colValue: Long) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, colValue: Float) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, colValue: Double) if !isNull(colValue) =>
+                td.add(colValue)
+              case (td, _) =>
             }
         }
+        Seq(tDigests)
     }.reduce {
       (td1, td2) => (td1, td2).zipped.map {
         (x, y) =>
-          x.add(y)
+          if (y.size() > 0) x.add(y)
           x
       }
     }
-    val tdigests = tDigestDataset.first(1).collect().head
-    tdigests.map {
+
+    val tDigests = tDigestDataset.first(1).collect().head
+    tDigests.map {
       td =>
-        val quantiles = percentiles.map(p => td.quantile(p))
+        val quantiles = percentiles.map(p => if (td.size() > 0) td.quantile(p) else Double.NaN)
         new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
     }
   }
@@ -128,20 +138,32 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
 
   private def getTDigest(columnName: String): TDigest = {
     val table = ddf.getRepresentationHandler.get(DATASET_ROW_TYPE_SPECS: _*).asInstanceOf[DataSet[Row]]
-    val columnData: DataSet[Row] = table.select(columnName).where(s"$columnName.isNotNull")
-    val result = columnData.map {
-      row =>
-        val columnValue = row.productElement(0)
-        val rs = new TDigest(100)
-        if(!isNull(columnValue)){
-          rs.add(columnValue.toString.toDouble)
+    val columnIndex = ddf.getColumnIndex(columnName)
+    val tDigestDataset = table.mapPartition {
+      rows =>
+        val tDigest = new TDigest(100)
+        rows.foreach {
+          row => row.productElement(columnIndex) match {
+            case colValue: Int if !isNull(colValue) =>
+              tDigest.add(colValue)
+            case colValue: Long if !isNull(colValue) =>
+              tDigest.add(colValue)
+            case colValue: Float if !isNull(colValue) =>
+              tDigest.add(colValue)
+            case colValue: Double if !isNull(colValue) =>
+              tDigest.add(colValue)
+            case (td, _) =>
+          }
         }
-        rs
+        Seq(tDigest)
     }.reduce {
-      (x, y) =>
-        x.add(y)
-        x
-    }.collect().head
+      (tDigest1, tDigest2) =>
+        if (tDigest2.size() > 0) {
+          tDigest1.add(tDigest2)
+        }
+        tDigest1
+    }
+    val result = tDigestDataset.first(1).collect().head
     result
   }
 
@@ -209,6 +231,3 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
 }
-
-
-
