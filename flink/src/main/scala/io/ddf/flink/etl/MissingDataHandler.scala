@@ -29,8 +29,7 @@ class MissingDataHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with 
     val tableName: String = "tbl" + String.valueOf(Math.abs(rand.nextLong))
     val schema: Schema = new Schema(tableName, schemaColumns)
     val manager: DDFManager = ddf.getManager
-    manager.newDDF(data, typeSpecs, FlinkConstants.NAMESPACE,
-      tableName, schema)
+    manager.newDDF(data, typeSpecs, tableName, schema)
   }
 
   private def dropColumnsWithNA(columnNames: List[String], columnNamesString: String, threshold: Long): DDF = {

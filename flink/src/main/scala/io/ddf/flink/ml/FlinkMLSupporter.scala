@@ -52,7 +52,7 @@ class FlinkMLSupporter(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IS
 
     val schema = new Schema(null, outputColumns.asJava)
 
-    this.getManager.newDDF(this.getManager, resultDs, (classOf[DataSet[_]] +: resultType).toArray, this.getManager.getNamespace, schema.getTableName, schema)
+    this.getManager.newDDF(this.getManager, resultDs, (classOf[DataSet[_]] +: resultType).toArray, schema.getTableName, schema)
   }
 
   override def CVRandom(k: Int, trainingSize: Double, seed: lang.Long): util

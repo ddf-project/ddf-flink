@@ -56,8 +56,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     val schema: Schema = new Schema(c.tableName, cols.toList)
     val manager: DDFManager = this.getManager
     val typeSpecs: Array[Class[_]] = Array(classOf[String])
-    val ddf = manager.newDDF(null, typeSpecs, theDDF.getNamespace, c
-      .tableName, schema)
+    val ddf = manager.newDDF(null, typeSpecs, c.tableName, schema)
     ddf
   }
 
@@ -100,7 +99,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     val finalDataSet = limit(s, sorted)
 
     val manager: DDFManager = this.getManager
-    val newDDF = manager.newDDF(finalDataSet, dsrTypeSpecs, theDDF.getNamespace, tableName, schema)
+    val newDDF = manager.newDDF(finalDataSet, dsrTypeSpecs, tableName, schema)
     newDDF
   }
 

@@ -67,6 +67,7 @@ object RepresentationHandler {
   }
 }
 
+
 object RowParser extends Serializable {
 
   private val dateFormat = new SimpleDateFormat()

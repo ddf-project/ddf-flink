@@ -33,7 +33,7 @@ class JoinHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandle
     val joinedSchema = new Schema(newTableName, joinedColNames.toList)
     val manager: DDFManager = this.getManager
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
-    val resultDDF: DDF = manager.newDDF(joinedDataSet, typeSpecs, getDDF.getNamespace, newTableName, joinedSchema)
+    val resultDDF: DDF = manager.newDDF(joinedDataSet, typeSpecs, newTableName, joinedSchema)
     this.getDDF.getManager.addDDF(resultDDF)
     resultDDF
 
@@ -55,7 +55,7 @@ class JoinHandler(ddf: DDF) extends ADDFFunctionalGroupHandler(ddf) with IHandle
     val newSchema = new Schema(newTableName, leftSchema.getColumns)
     val manager: DDFManager = this.getManager
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Row])
-    val resultDDF: DDF = this.getManager.newDDF(resultDataSet, typeSpecs, getDDF.getNamespace, newTableName, newSchema)
+    val resultDDF: DDF = this.getManager.newDDF(resultDataSet, typeSpecs, newTableName, newSchema)
     this.getDDF.getManager.addDDF(resultDDF)
     resultDDF
   }

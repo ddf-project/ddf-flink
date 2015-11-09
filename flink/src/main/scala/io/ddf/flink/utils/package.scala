@@ -223,7 +223,7 @@ package object utils {
       val newSchema = new Schema(newTableName, cols)
       val manager: DDFManager = ddf.getManager
       val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[Array[Object]])
-      manager.newDDF(binned, typeSpecs, manager.getNamespace, newTableName, newSchema)
+      manager.newDDF(binned, typeSpecs, newTableName, newSchema)
     }
   }
 

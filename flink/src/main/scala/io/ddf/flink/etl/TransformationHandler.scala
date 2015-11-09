@@ -61,7 +61,7 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
 
     val manager = this.getManager
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[REXP])
-    val resultDDF = manager.newDDF(manager, rReduced, typeSpecs, manager.getNamespace, null, newSchema)
+    val resultDDF = manager.newDDF(manager, rReduced, typeSpecs, null, newSchema)
     resultDDF
   }
 
@@ -117,7 +117,7 @@ class TransformationHandler(ddf: DDF) extends CoreTransformationHandler(ddf) {
     val flinkRList = rMapped.map(rexp => FlinkRList(rexp.asList(), columnArr.map(_.getName)))
 
     val typeSpecs: Array[Class[_]] = Array(classOf[DataSet[_]], classOf[FlinkRList])
-    val resultDDF = manager.newDDF(manager, flinkRList, typeSpecs, manager.getNamespace, null, newSchema)
+    val resultDDF = manager.newDDF(manager, flinkRList, typeSpecs, null, newSchema)
     mLog.info(">>>>> adding ddf to manager: " + ddf.getName)
     resultDDF.getMetaDataHandler.copyFactor(this.getDDF)
     resultDDF

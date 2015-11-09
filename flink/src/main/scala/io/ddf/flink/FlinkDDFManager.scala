@@ -54,7 +54,7 @@ class FlinkDDFManager extends DDFManager {
       rdata
     }
 
-    val ddf = this.newDDF(data, typeSpecs, getNamespace, tableName, schema)
+    val ddf = this.newDDF(data, typeSpecs,tableName, schema)
     this.addDDF(ddf)
     ddf
   }
@@ -109,17 +109,6 @@ class FlinkDDFManager extends DDFManager {
     executionEnvironment
   }
 
-  override def transfer(fromEngine: UUID, ddfURI: String): DDF = {
-    throw new DDFException("transfer is not supported for Flink", new UnsupportedOperationException)
-  }
-
-  override def getOrRestoreDDFUri(ddfURI: String): DDF = {
-    throw new DDFException("this is currently unsupported", new UnsupportedOperationException)
-  }
-
-  override def getOrRestoreDDF(uuid: UUID): DDF = {
-    throw new DDFException("this is currently unsupported", new UnsupportedOperationException)
-  }
 
   override def setDDFName(ddf: DDF, name: String): Unit = {
     super.setDDFName(ddf, name)
