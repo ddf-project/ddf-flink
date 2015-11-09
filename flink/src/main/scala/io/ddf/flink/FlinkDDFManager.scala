@@ -26,9 +26,8 @@ class FlinkDDFManager extends DDFManager {
 
   override def getEngine: String = ENGINE_NAME
 
-  override def getNamespace: String = NAMESPACE
 
-  override def loadTable(fileURL: String, fieldSeparator: String): DDF = {
+  override def loadFile(fileURL: String, fieldSeparator: String): DDF = {
 
     val fileData: DataSet[String] = flinkExecutionEnvironment.readTextFile(fileURL)
 
@@ -114,7 +113,18 @@ class FlinkDDFManager extends DDFManager {
     super.setDDFName(ddf, name)
     ddf.getSchema.setTableName(name)
   }
+
+  def copyFrom (ddf: DDF, tgtname: String): DDF = {
+    throw new DDFException("Operation not supported")
+  }
+
+  def copyFrom (manager: DDFManager, ddfname: String, tgtname: String): DDF = {
+    throw new DDFException("Operation not supported")
+  }
+
 }
+
+
 
 object FlinkConstants {
   val ENGINE_NAME: String = "flink"

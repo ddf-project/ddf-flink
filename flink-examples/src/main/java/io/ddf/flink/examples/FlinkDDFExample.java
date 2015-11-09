@@ -51,7 +51,7 @@ public class FlinkDDFExample {
     private static void dropNA(DDFManager manager, String filePath, StringBuffer buffer) throws DDFException {
         //using loadTable example
         buffer.append("\n Drop NA");
-        DDF airlineDDF = manager.loadTable(filePath, ",");
+        DDF airlineDDF = manager.loadFile(filePath, ",");
 
         DDF cleanData = airlineDDF.dropNA();
 
