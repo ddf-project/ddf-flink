@@ -1,4 +1,6 @@
 import Common._
+import sbtassembly.Plugin.AssemblyKeys._
+import sbtassembly.Plugin._
 
 organization := "io.ddf"
 
@@ -25,6 +27,18 @@ conflictManager := ConflictManager.strict
 
 commonSettings
 
+lazy val flinkAssemblySettings = Seq(
+  mergeStrategy in assembly := {
+    case m if m.toLowerCase.endsWith("manifest.mf") => MergeStrategy.discard
+      case m if m.toLowerCase.endsWith("eclipsef.sf") => MergeStrategy.discard
+      case m if m.toLowerCase.endsWith("eclipsef.rsa") => MergeStrategy.discard
+    case "reference.conf" => MergeStrategy.concat
+    case "application.conf"                            => MergeStrategy.concat
+    case _ => MergeStrategy.first
+  },
+  test in assembly := {}
+)
+
 lazy val root = project.in(file(".")).aggregate(flink, flinkExamples)
 
 val excludeBreeze = ExclusionRule(organization = "org.scalanlp", name = "*")
@@ -34,7 +48,8 @@ val com_adatao_unmanaged = Seq(
   "com.adatao.unmanaged.net.rforge" % "Rserve" % "1.8.2.compiled"
 )
 
-lazy val flink = project.in(file("flink")).settings(commonSettings: _*).settings(
+lazy val flink = project.in(file("flink")).settings(commonSettings: _*).settings(assemblySettings: _*).settings(
+  flinkAssemblySettings: _*).settings(
   name := "ddf-flink",
   pomExtra := submodulePom,
   libraryDependencies ++= Seq(
@@ -56,7 +71,8 @@ lazy val flink = project.in(file("flink")).settings(commonSettings: _*).settings
   testOptions in Test += Tests.Argument("-oD")
 )
 
-lazy val flinkExamples = project.in(file("flink-examples")).dependsOn(flink).settings(commonSettings: _*).settings(
+lazy val flinkExamples = project.in(file("flink-examples")).dependsOn(flink).settings(commonSettings: _*)
+  .settings(assemblySettings: _*).settings(flinkAssemblySettings: _*).settings(
   name := "flink-examples",
   pomExtra := submodulePom
 )
