@@ -12,11 +12,10 @@ public class FlinkDDF extends DDF {
     public FlinkDDF(DDFManager manager,
                     Object data,
                     Class<?>[] typeSpecs,
-                    String engineName,
                     String namespace,
                     String name,
                     Schema schema) throws DDFException {
-        super(manager, data, typeSpecs, engineName, namespace, name, schema);
+        super(manager, data, typeSpecs, namespace, name, schema);
     }
 
     @Override
@@ -38,8 +37,8 @@ public class FlinkDDF extends DDF {
     }
 
     @Override
-    protected void initialize(DDFManager manager, Object data, Class<?>[] typeSpecs, String engineName, String namespace, String name, Schema schema) throws DDFException {
-        super.initialize(manager, data, typeSpecs, manager.getEngineName(), namespace, name, schema);
+    protected void initialize(DDFManager manager, Object data, Class<?>[] typeSpecs, String namespace, String name, Schema schema) throws DDFException {
+        super.initialize(manager, data, typeSpecs, namespace, name, schema);
         this.ML = new FlinkMLFacade(this, this.getMLSupporter());
     }
 

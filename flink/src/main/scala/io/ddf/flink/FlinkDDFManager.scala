@@ -3,6 +3,7 @@ package io.ddf.flink
 import java.security.SecureRandom
 import java.util.UUID
 
+import io.ddf.DDFManager.EngineType
 import io.ddf.content.Schema
 import io.ddf.content.Schema.Column
 import io.ddf.exception.DDFException
@@ -20,6 +21,8 @@ class FlinkDDFManager extends DDFManager {
   private val flinkExecutionEnvironment: ExecutionEnvironment = createExecutionEnvironment
 
   private final val logger = LoggerFactory.getLogger(getClass)
+
+  this.setEngineType(EngineType.FLINK)
 
   override def getEngine: String = ENGINE_NAME
 
@@ -51,7 +54,7 @@ class FlinkDDFManager extends DDFManager {
       rdata
     }
 
-    val ddf = this.newDDF(data, typeSpecs, getEngine, getNamespace, tableName, schema)
+    val ddf = this.newDDF(data, typeSpecs, getNamespace, tableName, schema)
     this.addDDF(ddf)
     ddf
   }
@@ -106,7 +109,7 @@ class FlinkDDFManager extends DDFManager {
     executionEnvironment
   }
 
-  override def transfer(fromEngine: String, ddfURI: String): DDF = {
+  override def transfer(fromEngine: UUID, ddfURI: String): DDF = {
     throw new DDFException("transfer is not supported for Flink", new UnsupportedOperationException)
   }
 
@@ -126,5 +129,5 @@ class FlinkDDFManager extends DDFManager {
 
 object FlinkConstants {
   val ENGINE_NAME: String = "flink"
-  val NAMESPACE: String = "FlinkDDF"
+  val NAMESPACE: String = "adatao"
 }

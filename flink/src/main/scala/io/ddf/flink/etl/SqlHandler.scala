@@ -19,6 +19,7 @@ import org.apache.flink.api.table.typeinfo.{RenamingProxyTypeInfo, RowTypeInfo}
 import org.apache.flink.api.table.{Row, Table}
 import org.apache.flink.core.fs.Path
 
+import java.util.UUID
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 
@@ -55,7 +56,8 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     val schema: Schema = new Schema(c.tableName, cols.toList)
     val manager: DDFManager = this.getManager
     val typeSpecs: Array[Class[_]] = Array(classOf[String])
-    val ddf = manager.newDDF(null, typeSpecs, manager.getEngineName, theDDF.getNamespace, c.tableName, schema)
+    val ddf = manager.newDDF(null, typeSpecs, theDDF.getNamespace, c
+      .tableName, schema)
     ddf
   }
 
@@ -98,7 +100,7 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     val finalDataSet = limit(s, sorted)
 
     val manager: DDFManager = this.getManager
-    val newDDF = manager.newDDF(finalDataSet, dsrTypeSpecs, manager.getEngineName, theDDF.getNamespace, tableName, schema)
+    val newDDF = manager.newDDF(finalDataSet, dsrTypeSpecs, theDDF.getNamespace, tableName, schema)
     newDDF
   }
 
@@ -231,8 +233,17 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
         val selectStmt = s
 
         val ddf = select2ddf(theDDF, selectStmt)
+        /*
+        val table: Table = ddf.getRepresentationHandler.get(tTypeSpecs: _*).asInstanceOf[Table]
+        // (ddf.getSchema, seqAsJavaList(table.collect().map(_.toString())))
+        (ddf.getSchema, seqAsJavaList(table.collect().map(row => row
+          .productIterator.map(
+            cell => if (cell == null) "" else cell.toString
+          ).mkString("\t"))))
+        */
         val rowDataset: DataSet[Row] = ddf.getRepresentationHandler.get(dsrTypeSpecs: _*).asInstanceOf[DataSet[Row]]
-        val rowStringDataset:DataSet[String] = rowDataset.map(r=>r.toString())
+        val rowStringDataset:DataSet[String] = rowDataset.map(row => row
+          .productIterator.map(cell => if (cell == null) "" else cell.toString).mkString("\t"))
         (ddf.getSchema, seqAsJavaList(rowStringDataset.collect()))
     }
   }
@@ -259,16 +270,16 @@ class SqlHandler(theDDF: DDF) extends ASqlHandler(theDDF) {
     }
   }
 
-  override def sql(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlResult = {
+   def sql(command: String, maxRows: Integer, dataSource: DataSourceDescriptor): SqlResult = {
     val limit: Int = getLimit(maxRows)
     internalSql(command, limit, Option(dataSource))
   }
 
-  override def sql(command: String, maxRows: Integer): SqlResult = {
+   def sql(command: String, maxRows: Integer): SqlResult = {
     internalSql(command, getLimit(maxRows))
   }
 
-  override def sql(command: String): SqlResult = {
+  def sql(command: String): SqlResult = {
     internalSql(command)
   }
 

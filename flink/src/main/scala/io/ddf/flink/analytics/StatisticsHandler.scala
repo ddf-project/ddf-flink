@@ -96,8 +96,8 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
       }
     }
 
-    val tDigests = tDigestDataset.first(1).collect().head
-    tDigests.map {
+  val tdigests = tDigestDataset.first(1).collect().head
+    tdigests.map {
       td =>
         val quantiles = percentiles.map(p => if (td.size() > 0) td.quantile(p) else Double.NaN)
         new FiveNumSummary(quantiles(0), quantiles(1), quantiles(2), quantiles(3), quantiles(4))
@@ -231,3 +231,96 @@ class StatisticsHandler(ddf: DDF) extends AStatisticsSupporter(ddf) {
   }
 
 }
+
+class SummaryAccumulatorHelper(id: String, cols: Int) extends RichFlatMapFunction[Row, Summary] {
+  private var summaryAccumulator: SummaryAccumulator = null
+
+  override def open(parameters: Configuration): Unit = {
+    summaryAccumulator = new SummaryAccumulator(cols)
+    getRuntimeContext.addAccumulator(id, summaryAccumulator)
+  }
+
+  override def flatMap(in: Row, collector: Collector[Summary]): Unit = {
+    summaryAccumulator.add(in)
+  }
+}
+
+class SummaryAccumulator(cols: Int) extends Accumulator[Row, Array[Summary]] {
+  private var summary: Array[Summary] = (1 to cols).map(x => new Summary()).toArray
+
+  override def getLocalValue: Array[Summary] = summary
+
+  override def resetLocal(): Unit = {
+    summary = (1 to cols).map(x => new Summary()).toArray
+  }
+
+  override def merge(other: Accumulator[Row, Array[Summary]]): Unit = {
+    this.summary = (this.summary, other.getLocalValue).zipped.map((r1col, r2col) => r1col.merge(r2col))
+  }
+
+  override def add(row: Row): Unit = {
+    (this.summary, row.elementArray).zipped.foreach {
+      case (s, entry) if !isNull(entry) =>
+        entry match {
+          case d: Double =>
+            s.merge(d)
+          case i: Int =>
+            s.merge(i)
+          case f: Float =>
+            s.merge(f)
+          case _ =>
+            //if value is na increase countNA else ignore
+            if (entry.toString.equalsIgnoreCase("NA")) {
+              s.addToNACount(1)
+            }
+        }
+      case (s, entry) if(isNull(entry)) =>
+        //DO NOTHING
+    }
+  }
+}
+
+
+class TDigestHelper(id: String, cols: Int, compression: Int) extends RichFlatMapFunction[Row, Summary] {
+  private var digestAccumulator: TDigestAccumulator = null
+
+  override def open(parameters: Configuration): Unit = {
+    digestAccumulator = new TDigestAccumulator(cols, compression)
+    getRuntimeContext.addAccumulator(id, digestAccumulator)
+  }
+
+  override def flatMap(in: Row, collector: Collector[Summary]): Unit = {
+    digestAccumulator.add(in)
+  }
+}
+
+class TDigestAccumulator(cols: Int, compression: Int) extends Accumulator[Row, Array[TDigest]] {
+  private var digests: Array[TDigest] = (0 to cols).map(x => new TDigest(compression)).toArray
+  override def getLocalValue: Array[TDigest] = digests
+
+  override def resetLocal(): Unit = {
+    digests = (0 to cols).map(x => new TDigest(compression)).toArray
+  }
+
+  override def merge(other: Accumulator[Row, Array[TDigest]]): Unit = {
+    (digests, other.getLocalValue).zipped.map{
+      case (t1, t2) => if(t2.size() > 0) t1.add(t2)
+    }
+  }
+
+  override def add(row: Row): Unit = {
+    (digests, row.elementArray).zipped.map {
+      case (td, element: Int) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Long) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Float) if !isNull(element) =>
+        td.add(element)
+      case (td, element: Double) if !isNull(element) =>
+        td.add(element)
+      case (td, _) =>
+        //Do Nothing
+    }
+  }
+}
+>>>>>>> ddf-1.4.3
