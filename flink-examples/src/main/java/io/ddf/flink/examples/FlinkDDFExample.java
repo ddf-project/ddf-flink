@@ -72,8 +72,8 @@ public class FlinkDDFExample {
 
     private static void runAlgos(DDFManager manager, String path, StringBuffer buffer) throws DDFException {
         buffer.append("\n ALgos ---");
-        manager.sql("create table iris (flower double, petal double, septal double)", FlinkConstants.ENGINE_NAME());
-        manager.sql("load '" + path + "' into iris", FlinkConstants.ENGINE_NAME());
+        manager.sql("create table iris (flower double, petal double, septal double)", false);
+        manager.sql("load '" + path + "' into iris", false);
         DDF trainDDF = manager.getDDFByName("iris");
         DDF testDDF = trainDDF.VIEWS.project("petal", "septal");
 
@@ -100,8 +100,8 @@ public class FlinkDDFExample {
         String algosDataPath = basePath + "/fisheriris.csv";
 
         //SQL2DDF
-        manager.sql("CREATE TABLE mtcars (mpg double, cyl int, disp double, hp int, drat double, wt double, qesc double, vs int, am int, gear int, carb string)", FlinkConstants.ENGINE_NAME());
-        manager.sql("load '" + basePath + "/mtcars' delimited by ' '  into mtcars", FlinkConstants.ENGINE_NAME());
+        manager.sql("CREATE TABLE mtcars (mpg double, cyl int, disp double, hp int, drat double, wt double, qesc double, vs int, am int, gear int, carb string)", false);
+        manager.sql("load '" + basePath + "/mtcars' delimited by ' '  into mtcars", false);
 
         DDF ddf = manager.sql2ddf("select * from mtcars");
 

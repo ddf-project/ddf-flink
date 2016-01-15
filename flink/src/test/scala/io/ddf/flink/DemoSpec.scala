@@ -16,8 +16,8 @@ class DemoSpec extends FlatSpec with Matchers {
 
     val filePath = getClass.getResource("/airline.csv").getPath
 //    val filePath = "/home/shiti/work/adatao/ddf-with-flink/resources/test/airline.csv"
-    mgr.sql("create table airline (Year int,Month int,DayofMonth int, DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int, CRSArrTime int,UniqueCarrier string, FlightNum int,  TailNum string, ActualElapsedTime int, CRSElapsedTime int,  AirTime int, ArrDelay int, DepDelay int, Origin string,  Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int,  CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", FlinkConstants.ENGINE_NAME)
-    mgr.sql(s"load '$filePath' into airline", FlinkConstants.ENGINE_NAME)
+    mgr.sql("create table airline (Year int,Month int,DayofMonth int, DayOfWeek int,DepTime int,CRSDepTime int,ArrTime int, CRSArrTime int,UniqueCarrier string, FlightNum int,  TailNum string, ActualElapsedTime int, CRSElapsedTime int,  AirTime int, ArrDelay int, DepDelay int, Origin string,  Dest string, Distance int, TaxiIn int, TaxiOut int, Cancelled int,  CancellationCode string, Diverted string, CarrierDelay int, WeatherDelay int, NASDelay int, SecurityDelay int, LateAircraftDelay int )", false)
+    mgr.sql(s"load '$filePath' into airline", false)
 
     //# Table like
     val table = mgr.sql2ddf("select * from airline")
