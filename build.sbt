@@ -43,9 +43,9 @@ lazy val root = project.in(file(".")).aggregate(flink, flinkExamples)
 
 val excludeBreeze = ExclusionRule(organization = "org.scalanlp", name = "*")
 
-val com_adatao_unmanaged = Seq(
-  "com.adatao.unmanaged.net.rforge" % "REngine" % "2.1.1.compiled",
-  "com.adatao.unmanaged.net.rforge" % "Rserve" % "1.8.2.compiled"
+val rforge = Seq(
+  "net.rforge" % "REngine" % "2.1.1.compiled",
+  "net.rforge" % "Rserve" % "1.8.2.compiled"
 )
 
 lazy val flink = project.in(file("flink")).settings(commonSettings: _*).settings(assemblySettings: _*).settings(
@@ -67,7 +67,7 @@ lazy val flink = project.in(file("flink")).settings(commonSettings: _*).settings
     "com.clearspring.analytics" % "stream" % "2.7.0" exclude("asm", "asm"),
     "asm" % "asm" % "3.2",
     "org.scalatest" % "scalatest_2.10" % "2.2.2" % "test"
-  ) ++ com_adatao_unmanaged,
+  ) ++ rforge,
   testOptions in Test += Tests.Argument("-oD")
 )
 

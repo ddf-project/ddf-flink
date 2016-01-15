@@ -16,7 +16,7 @@ class BaseSpec extends FlatSpec with Matchers {
 
   def loadDDF(): DDF = {
     val filePath: String = getClass.getResource("/airline.csv").getPath
-    lDdf = Option(lDdf).getOrElse(flinkDDFManager.loadTable(filePath, ","))
+    lDdf = Option(lDdf).getOrElse(flinkDDFManager.loadFile(filePath, ","))
     lDdf
   }
 
@@ -29,14 +29,14 @@ class BaseSpec extends FlatSpec with Matchers {
       flinkDDFManager.getDDFByName(ddfName)
     } catch {
       case e: Exception =>
-        flinkDDFManager.sql(s"create table $ddfName (${columns.mkString(",")})", FlinkConstants.ENGINE_NAME)
+        flinkDDFManager.sql(s"create table $ddfName (${columns.mkString(",")})", false)
         val filePath = getClass.getResource(fileName).getPath
         val additionalOptions = if (!isNullSetToDefault) {
           "WITH NULL '' NO DEFAULTS"
         } else {
           s"DELIMITED BY '$delimiter'"
         }
-        flinkDDFManager.sql(s"load '$filePath' $additionalOptions INTO $ddfName", FlinkConstants.ENGINE_NAME)
+        flinkDDFManager.sql(s"load '$filePath' $additionalOptions INTO $ddfName", false)
         flinkDDFManager.getDDFByName(ddfName)
     }
   }

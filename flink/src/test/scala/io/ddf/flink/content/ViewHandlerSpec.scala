@@ -11,7 +11,7 @@ class ViewHandlerSpec extends BaseSpec {
 
   it should "project after remove columns " in {
     val ddf = airlineDDF
-    val ddf0 = flinkDDFManager.sql2ddf("select * from airline", "flink")
+    val ddf0 = flinkDDFManager.sql2ddf("select * from airline", false)
     val yearLabel = "Year"
     val depTimeLabel = "DepTime"
     val columns: java.util.List[String] = List(yearLabel, depTimeLabel, "Month")
