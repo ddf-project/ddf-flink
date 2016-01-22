@@ -20,43 +20,23 @@ For Big Data Scientists & Engineers
 
 ### Getting Started
 
-This project depends on DDF v1.4.0-SNAPSHOT and requires its installation to run. To get DDF version 1.4.0-SNAPSHOT, clone DDF repo and checkout the tuplejump-integration branch.
+This project depends on DDF core and requires its installation to run. To get DDF core, clone DDF repo and checkout the master branch.
 
 ```
 $ git clone git@github.com:ddf-project/DDF.git
 $ cd DDF
-$ git fetch
-$ git checkout tuplejump-integration
 ```
-
-No changes are required when installing DDF using maven.
-
-Before installing DDF using SBT, add a new line after line#482 in project/RootBuild.scala, (don't miss adding the comma at the end of line#482)
-
-```
-  ),
-
-publishArtifact in (Compile, packageDoc) := false
-```
-This is to avoid the error in publishing docs through SBT.
-
-
 
 DDF can be installed by,
 
 ```
-$ bin/run-once.sh
-//using maven
-$ mvn package install -DskipTests
-//or using sbt
 $ sbt publishLocal
 ```
-
 
 Installing `ddf-with-flink` can be done by
 
 ```
-$ git clone git@github.com:tuplejump/ddf-with-flink.git
+$ git clone git@github.com:ddf-project/ddf-flink.git
 $ cd ddf-with-flink
 $ bin/run-once.sh
 $ mvn package install -DskipTests
